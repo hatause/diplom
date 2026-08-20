@@ -1,0 +1,110 @@
+import { useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuthStore } from '@/store/auth.store';
+import { LogIn, Mail, Lock, ArrowRight } from 'lucide-react';
+import { motion } from 'framer-motion';
+
+export default function LoginPage() {
+  const { login } = useAuthStore();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      await login(email, password);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Ошибка входа');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.03em', marginBottom: 6 }}>
+        Добро пожаловать
+      </h2>
+      <p style={{ color: 'var(--text-tertiary)', fontSize: 14, marginBottom: 28 }}>
+        Войдите, чтобы продолжить обучение
+      </p>
+
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{
+            padding: '12px 16px', borderRadius: 14, marginBottom: 20,
+            background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)',
+            color: 'var(--error)', fontSize: 13, fontWeight: 500,
+          }}
+        >
+          {error}
+        </motion.div>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
+        <div style={{ position: 'relative' }}>
+          <Mail size={16} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="input-glass"
+            style={{ paddingLeft: 44 }}
+            required
+          />
+        </div>
+        <div style={{ position: 'relative' }}>
+          <Lock size={16} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
+          <input
+            type="password"
+            placeholder="Пароль"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="input-glass"
+            style={{ paddingLeft: 44 }}
+            required
+          />
+        </div>
+      </div>
+
+      <motion.button
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        type="submit"
+        disabled={loading}
+        className="btn-gradient"
+        style={{
+          width: '100%', padding: '15px 20px', borderRadius: 16,
+          fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+          opacity: loading ? 0.7 : 1,
+        }}
+      >
+        {loading ? (
+          <div style={{ width: 20, height: 20, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
+        ) : (
+          <>
+            <LogIn size={18} />
+            Войти
+            <ArrowRight size={16} style={{ marginLeft: 'auto' }} />
+          </>
+        )}
+      </motion.button>
+
+      <p style={{ textAlign: 'center', marginTop: 24, fontSize: 13, color: 'var(--text-tertiary)' }}>
+        Нет аккаунта?{' '}
+        <Link to="/register" style={{ color: 'var(--text-accent)', fontWeight: 600, textDecoration: 'none' }}>
+          Зарегистрироваться
+        </Link>
+      </p>
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </form>
+  );
+}
