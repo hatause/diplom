@@ -69,6 +69,8 @@ model User {
   teacherOf      Subject[]        @relation("SubjectTeacher")
   groups         Group[]          @relation("GroupTeachers")
   lectures       Lecture[]
+  sentMessages   Message[]        @relation("SentMessages")
+  receivedMessages Message[]      @relation("ReceivedMessages")
 
   @@index([email])
   @@index([role])
@@ -395,18 +397,38 @@ model Lecture {
   id          String   @id @default(uuid())
   title       String
   content     String   @db.Text
-  groupId     String
+  groupId     String?
   subjectId   String
   teacherId   String
+  fileUrl     String?
+  fileName    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  group       Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  group       Group?   @relation(fields: [groupId], references: [id], onDelete: Cascade)
   subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   teacher     User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
   @@index([groupId])
   @@index([subjectId])
   @@index([teacherId])
+}
+
+// ──── Messenger ────
+
+model Message {
+  id         String   @id @default(uuid())
+  senderId   String
+  receiverId String
+  content    String   @db.Text
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  
+  sender   User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([createdAt])
 }
 

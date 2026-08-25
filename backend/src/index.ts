@@ -6,6 +6,10 @@ import cookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
+import fastifyCookie from '@fastify/cookie';
+import fastifyMultipart from '@fastify/multipart';
+import fastifyStatic from '@fastify/static';
+import path from 'path';
 import { env } from './config/env.js';
 import { API_PREFIX, APP_NAME } from './config/constants.js';
 import { logger } from './lib/logger.js';
@@ -22,6 +26,9 @@ import { adminRoutes } from './routes/admin.routes.js';
 import { reviewRoutes } from './routes/review.routes.js';
 import { achievementRoutes } from './routes/achievements.routes.js';
 import { lecturesRoutes } from './routes/lectures.routes.js';
+import { groupsRoutes } from './routes/groups.routes.js';
+import { messagesRoutes } from './routes/messages.routes.js';
+import { uploadRoutes } from './routes/upload.routes.js';
 
 async function buildApp() {
   const app = Fastify({
@@ -46,9 +53,22 @@ async function buildApp() {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   });
 
-  await app.register(cookie, {
+  await app.register(fastifyCookie, {
     secret: env.JWT_SECRET,
-    parseOptions: {},
+    hook: 'onRequest',
+  });
+
+  // ── Multipart (File Uploads) ──
+  await app.register(fastifyMultipart, {
+    limits: {
+      fileSize: 50 * 1024 * 1024, // 50MB
+    },
+  });
+
+  // ── Static Files (Uploads Directory) ──
+  await app.register(fastifyStatic, {
+    root: path.join(process.cwd(), 'uploads'),
+    prefix: `${API_PREFIX}/uploads/`,
   });
 
   await app.register(rateLimit, {
@@ -127,6 +147,9 @@ async function buildApp() {
   await app.register(reviewRoutes, { prefix: `${API_PREFIX}/review` });
   await app.register(achievementRoutes, { prefix: `${API_PREFIX}/achievements` });
   await app.register(lecturesRoutes, { prefix: `${API_PREFIX}/lectures` });
+  await app.register(groupsRoutes, { prefix: `${API_PREFIX}/groups` });
+  await app.register(messagesRoutes, { prefix: `${API_PREFIX}/messages` });
+  await app.register(uploadRoutes, { prefix: `${API_PREFIX}/upload` });
 
   // ── Health check ──
   app.get('/health', async () => ({ status: 'ok', name: APP_NAME, timestamp: new Date().toISOString() }));

@@ -110,13 +110,16 @@ function DashboardTab({ data }: { data: any }) {
 }
 
 function LecturesTab({ groups, subjects }: { groups: any[], subjects: any[] }) {
-  const [form, setForm] = useState({ title: '', content: '', groupId: '', subjectId: '' });
+  const [form, setForm] = useState({ title: '', content: '', groupId: '', subjectId: '', file: null as File | null });
   const [lectures, setLectures] = useState<any[]>([]);
-  const [selectedGroup, setSelectedGroup] = useState<string>('');
+  const [selectedGroup, setSelectedGroup] = useState<string>('public');
+  const [uploading, setUploading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (selectedGroup) {
+    if (selectedGroup === 'public') {
+      api.get(`/lectures/public`).then(res => setLectures(res.data.data));
+    } else if (selectedGroup) {
       api.get(`/lectures/group/${selectedGroup}`).then(res => setLectures(res.data.data));
     } else {
       setLectures([]);
@@ -125,12 +128,43 @@ function LecturesTab({ groups, subjects }: { groups: any[], subjects: any[] }) {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await api.post('/lectures', form);
-    alert('Лекция добавлена!');
-    setForm({ ...form, title: '', content: '' });
-    if (form.groupId === selectedGroup) {
-      api.get(`/lectures/group/${selectedGroup}`).then(res => setLectures(res.data.data));
+    setUploading(true);
+    try {
+      let fileUrl = undefined;
+      let fileName = undefined;
+
+      if (form.file) {
+        const formData = new FormData();
+        formData.append('file', form.file);
+        const uploadRes = await api.post('/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        fileUrl = uploadRes.data.data.fileUrl;
+        fileName = uploadRes.data.data.fileName;
+      }
+
+      await api.post('/lectures', { 
+        title: form.title, 
+        content: form.content, 
+        groupId: form.groupId, 
+        subjectId: form.subjectId, 
+        fileUrl, 
+        fileName 
+      });
+      
+      alert('Лекция добавлена!');
+      setForm({ ...form, title: '', content: '', file: null });
+      if (form.groupId === selectedGroup || (!form.groupId && selectedGroup === 'public')) {
+        if (!form.groupId) {
+          api.get(`/lectures/public`).then(res => setLectures(res.data.data));
+        } else {
+          api.get(`/lectures/group/${selectedGroup}`).then(res => setLectures(res.data.data));
+        }
+      }
+    } catch (e: any) {
+      alert('Ошибка при создании лекции');
     }
+    setUploading(false);
   };
 
   return (
@@ -139,24 +173,36 @@ function LecturesTab({ groups, subjects }: { groups: any[], subjects: any[] }) {
         <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Plus size={18}/> Добавить лекцию</h3>
         <form onSubmit={submit} className="space-y-4">
           <input className="input-field w-full" placeholder="Название лекции" required value={form.title} onChange={e => setForm({...form, title: e.target.value})} />
-          <select className="input-field w-full" required value={form.groupId} onChange={e => setForm({...form, groupId: e.target.value})}>
-            <option value="">Выберите группу...</option>
-            {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+          <select className="input-field w-full" value={form.groupId} onChange={e => setForm({...form, groupId: e.target.value})}>
+            <option value="">Общий доступ (Public)</option>
+            {groups.map(g => <option key={g.id} value={g.id}>Группа: {g.name}</option>)}
           </select>
           <select className="input-field w-full" required value={form.subjectId} onChange={e => setForm({...form, subjectId: e.target.value})}>
             <option value="">Выберите предмет...</option>
             {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
           <textarea className="input-field w-full h-32" placeholder="Текст лекции..." required value={form.content} onChange={e => setForm({...form, content: e.target.value})} />
-          <button className="btn-primary w-full">Сохранить лекцию</button>
+          
+          <div className="border border-dashed border-[var(--border-subtle)] p-4 rounded-xl">
+            <label className="block text-sm text-[var(--text-secondary)] mb-2 font-medium">Прикрепить файл (опционально)</label>
+            <input 
+              type="file" 
+              className="text-sm text-[var(--text-primary)] file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-[var(--accent-1)] file:text-white hover:file:opacity-90"
+              onChange={e => setForm({...form, file: e.target.files?.[0] || null})}
+            />
+          </div>
+
+          <button disabled={uploading} className="btn-primary w-full flex justify-center gap-2">
+            {uploading ? 'Загрузка...' : 'Сохранить лекцию'}
+          </button>
         </form>
       </div>
 
       <div className="glass-card p-6">
         <h3 className="text-lg font-bold mb-4">Материалы групп</h3>
         <select className="input-field w-full mb-4" value={selectedGroup} onChange={e => setSelectedGroup(e.target.value)}>
-          <option value="">Выберите группу для просмотра...</option>
-          {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+          <option value="public">Общие (Public)</option>
+          {groups.map(g => <option key={g.id} value={g.id}>Группа: {g.name}</option>)}
         </select>
         
         {selectedGroup && (

@@ -5,7 +5,7 @@ import { useThemeStore } from '@/store/theme.store';
 import {
   LayoutDashboard, BookOpen, Calendar, History, BarChart3, Brain,
   Trophy, RefreshCcw, MessageSquare, User, LogOut, Sun, Moon,
-  Menu, X, GraduationCap, Shield, Sparkles,
+  Menu, X, GraduationCap, Shield, Sparkles, Users, FileText,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -17,6 +17,7 @@ const navSections = [
     links: [
       { to: '/dashboard', icon: LayoutDashboard, label: 'Дашборд' },
       { to: '/subjects', icon: BookOpen, label: 'Предметы' },
+      { to: '/lectures', icon: FileText, label: 'Лекции' },
       { to: '/schedule', icon: Calendar, label: 'Расписание' },
     ],
   },
@@ -24,9 +25,17 @@ const navSections = [
     title: 'Обучение',
     links: [
       { to: '/test/generate', icon: Brain, label: 'Создать тест', accent: true },
+      { to: '/feynman', icon: Sparkles, label: 'Метод Фейнмана', accent: true },
+      { to: '/debate', icon: MessageSquare, label: 'Дебаты с AI', accent: true },
       { to: '/history', icon: History, label: 'История' },
       { to: '/analytics', icon: BarChart3, label: 'Аналитика' },
       { to: '/review', icon: RefreshCcw, label: 'Повторение' },
+    ],
+  },
+  {
+    title: 'Общение',
+    links: [
+      { to: '/messages', icon: MessageSquare, label: 'Мессенджер' },
     ],
   },
   {
@@ -175,9 +184,14 @@ export function MainLayout() {
                 Управление
               </p>
               {user.role === 'TEACHER' || user.role === 'ADMIN' ? (
-                <Link to="/teacher" onClick={() => setSidebarOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderRadius: 14, fontSize: 13.5, fontWeight: 500, color: location.pathname === '/teacher' ? 'var(--text-accent)' : 'var(--text-secondary)', background: location.pathname === '/teacher' ? 'var(--accent-bg)' : 'transparent', textDecoration: 'none', marginBottom: 2 }}>
-                  <GraduationCap size={17} /> Преподаватель
-                </Link>
+                <>
+                  <Link to="/teacher" onClick={() => setSidebarOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderRadius: 14, fontSize: 13.5, fontWeight: 500, color: location.pathname === '/teacher' ? 'var(--text-accent)' : 'var(--text-secondary)', background: location.pathname === '/teacher' ? 'var(--accent-bg)' : 'transparent', textDecoration: 'none', marginBottom: 2 }}>
+                    <GraduationCap size={17} /> Дашборд
+                  </Link>
+                  <Link to="/teacher/groups" onClick={() => setSidebarOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderRadius: 14, fontSize: 13.5, fontWeight: 500, color: location.pathname.startsWith('/teacher/groups') ? 'var(--text-accent)' : 'var(--text-secondary)', background: location.pathname.startsWith('/teacher/groups') ? 'var(--accent-bg)' : 'transparent', textDecoration: 'none', marginBottom: 2 }}>
+                    <Users size={17} /> Группы
+                  </Link>
+                </>
               ) : null}
               {user.role === 'ADMIN' ? (
                 <Link to="/admin" onClick={() => setSidebarOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderRadius: 14, fontSize: 13.5, fontWeight: 500, color: location.pathname === '/admin' ? 'var(--text-accent)' : 'var(--text-secondary)', background: location.pathname === '/admin' ? 'var(--accent-bg)' : 'transparent', textDecoration: 'none' }}>

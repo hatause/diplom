@@ -67,7 +67,7 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
 export function authorize(...roles: Role[]) {
   return async (request: FastifyRequest, reply: FastifyReply) => {
     await authenticate(request, reply);
-    if (!request.user || !roles.includes(request.user.role)) {
+    if (!request.user || (roles.length > 0 && !roles.includes(request.user.role))) {
       throw ApiError.forbidden('Insufficient permissions');
     }
   };

@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+prisma
+pydantic
+pydantic-settings
+google-generativeai
+python-jose[cryptography]
+python-dotenv
+bcrypt
+email-validator

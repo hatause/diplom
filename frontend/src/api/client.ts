@@ -48,7 +48,7 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const { data } = await api.post('/auth/refresh');
+        const { data } = await axios.post(`${BASE_URL}/auth/refresh`, {}, { withCredentials: true });
         const newToken = data.data.accessToken;
         localStorage.setItem('aitutor-token', newToken);
         processQueue(null, newToken);

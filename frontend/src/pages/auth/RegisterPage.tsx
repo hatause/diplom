@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 
 export default function RegisterPage() {
   const { register } = useAuthStore();
-  const [form, setForm] = useState({ email: '', password: '', firstName: '', lastName: '' });
+  const [form, setForm] = useState({ email: '', password: '', firstName: '', lastName: '', groupCode: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -66,6 +66,10 @@ export default function RegisterPage() {
         <div style={{ position: 'relative' }}>
           <Lock size={16} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
           <input type="password" placeholder="Пароль (мин. 8 символов)" value={form.password} onChange={e => update('password', e.target.value)} className="input-glass" style={{ paddingLeft: 44 }} minLength={8} required />
+        </div>
+        <div style={{ position: 'relative' }}>
+          <User size={16} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
+          <input type="text" placeholder="Код группы (необязательно)" value={form.groupCode} onChange={e => update('groupCode', e.target.value)} className="input-glass" style={{ paddingLeft: 44 }} />
         </div>
       </div>
 

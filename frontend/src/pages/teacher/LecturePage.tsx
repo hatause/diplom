@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '@/api/client';
-import { Bot, FileText, ArrowLeft, Play, LayoutDashboard } from 'lucide-react';
+import { Bot, FileText, ArrowLeft, Play, LayoutDashboard, Download } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 export function LecturePage() {
@@ -18,7 +18,7 @@ export function LecturePage() {
       setLoading(false);
     }).catch(() => {
       alert('Лекция не найдена');
-      navigate('/teacher/dashboard');
+      navigate(-1);
     });
   }, [id, navigate]);
 
@@ -48,8 +48,8 @@ export function LecturePage() {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-20">
-      <button onClick={() => navigate('/teacher/dashboard')} className="flex items-center gap-2 text-sm text-[var(--text-secondary)] hover:text-[var(--primary)] transition-colors">
-        <ArrowLeft size={16} /> Назад к панели
+      <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm text-[var(--text-secondary)] hover:text-[var(--primary)] transition-colors">
+        <ArrowLeft size={16} /> Назад
       </button>
 
       <div className="glass-card p-8">
@@ -63,6 +63,28 @@ export function LecturePage() {
         <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none text-[var(--text-primary)] whitespace-pre-wrap">
           {lecture.content}
         </div>
+
+        {lecture.fileUrl && (
+          <div className="mt-8 p-4 border border-[var(--border-subtle)] rounded-xl flex items-center justify-between bg-[var(--bg-elevated)]">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-[var(--accent-1)]/10 text-[var(--accent-1)] flex items-center justify-center">
+                <FileText size={20} />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-[var(--text-primary)]">Прикрепленный файл</p>
+                <p className="text-xs text-[var(--text-secondary)]">{lecture.fileName || 'Файл'}</p>
+              </div>
+            </div>
+            <a 
+              href={`${import.meta.env.VITE_API_URL || '/api/v1'}${lecture.fileUrl.replace('/api/v1', '')}`} 
+              target="_blank" 
+              rel="noreferrer"
+              className="flex items-center gap-2 px-4 py-2 bg-[var(--accent-1)] text-white text-sm font-semibold rounded-lg hover:opacity-90 transition-opacity"
+            >
+              <Download size={16} /> Скачать
+            </a>
+          </div>
+        )}
       </div>
 
       <div className="flex gap-4">

@@ -8,9 +8,10 @@ export async function teacherRoutes(app: FastifyInstance) {
   // Get teacher dashboard data
   app.get('/dashboard', { preHandler: [teacherAuth] }, async (request: FastifyRequest) => {
     const teacherId = request.user!.userId;
+    const isAdmin = request.user!.role === 'ADMIN';
 
     const subjects = await prisma.subject.findMany({
-      where: { teacherId },
+      where: isAdmin ? undefined : { teacherId },
       include: { _count: { select: { tests: true } } },
     });
 
@@ -59,9 +60,16 @@ export async function teacherRoutes(app: FastifyInstance) {
   app.get('/students', { preHandler: [teacherAuth] }, async (request: FastifyRequest) => {
     const subjectId = (request.query as any)?.subjectId;
     const teacherId = request.user!.userId;
+    const isAdmin = request.user!.role === 'ADMIN';
 
-    const where: any = { test: { subject: { teacherId } }, status: 'COMPLETED' };
-    if (subjectId) where.test.subjectId = subjectId;
+    const where: any = { status: 'COMPLETED' };
+    if (!isAdmin) {
+      where.test = { subject: { teacherId } };
+    }
+    if (subjectId) {
+      if (!where.test) where.test = {};
+      where.test.subjectId = subjectId;
+    }
 
     const attempts = await prisma.attempt.findMany({
       where,
@@ -75,14 +83,20 @@ export async function teacherRoutes(app: FastifyInstance) {
 
     const students = await Promise.all(studentIds.map(async (studentId) => {
       const user = attempts.find(a => a.userId === studentId)!.user;
+      const statsWhere: any = { userId: studentId, status: 'COMPLETED' };
+      if (!isAdmin) statsWhere.test = { subject: { teacherId } };
+
       const stats = await prisma.attempt.aggregate({
-        where: { userId: studentId, test: { subject: { teacherId } }, status: 'COMPLETED' },
+        where: statsWhere,
         _avg: { percentage: true },
         _count: true,
       });
 
+      const weakTopicsWhere: any = { userId: studentId, masteryScore: { lt: 60 } };
+      if (!isAdmin) weakTopicsWhere.topic = { subject: { teacherId } };
+
       const weakTopics = await prisma.topicProgress.findMany({
-        where: { userId: studentId, masteryScore: { lt: 60 }, topic: { subject: { teacherId } } },
+        where: weakTopicsWhere,
         include: { topic: { select: { name: true } } },
         take: 5,
       });

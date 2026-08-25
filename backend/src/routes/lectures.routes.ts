@@ -8,6 +8,19 @@ export async function lecturesRoutes(app: FastifyInstance) {
   const teacherOrAdminAuth = authorize('TEACHER', 'ADMIN');
   const anyAuth = authorize();
 
+  // Get public lectures
+  app.get('/public', { preHandler: [anyAuth] }, async (request: FastifyRequest) => {
+    const lectures = await prisma.lecture.findMany({
+      where: { groupId: null },
+      include: {
+        teacher: { select: { firstName: true, lastName: true } },
+        subject: { select: { name: true } }
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    return { success: true, data: lectures };
+  });
+
   // Get lectures for a group
   app.get('/group/:groupId', { preHandler: [anyAuth] }, async (request: FastifyRequest) => {
     const groupId = (request.params as any).groupId;
@@ -38,16 +51,18 @@ export async function lecturesRoutes(app: FastifyInstance) {
 
   // Create lecture
   app.post('/', { preHandler: [teacherOrAdminAuth] }, async (request: FastifyRequest) => {
-    const { title, content, groupId, subjectId } = request.body as any;
+    const { title, content, groupId, subjectId, fileUrl, fileName } = request.body as any;
     const teacherId = request.user!.userId;
     
     const lecture = await prisma.lecture.create({
       data: {
         title,
         content,
-        groupId,
+        groupId: groupId || null,
         subjectId,
         teacherId,
+        fileUrl,
+        fileName,
       }
     });
     

@@ -10,6 +10,8 @@ import RegisterPage from '@/pages/auth/RegisterPage';
 import DashboardPage from '@/pages/DashboardPage';
 import { SubjectsPage } from '@/pages/SubjectsPage';
 import { SchedulePage } from '@/pages/SchedulePage';
+import { LecturesPage } from '@/pages/LecturesPage';
+import { MessagesPage } from '@/pages/MessagesPage';
 import { TestGeneratePage } from '@/pages/TestGeneratePage';
 import { TestPlayerPage } from '@/pages/TestPlayerPage';
 import { TestResultPage } from '@/pages/TestResultPage';
@@ -21,7 +23,10 @@ import { AITutorPage } from '@/pages/AITutorPage';
 import { ProfilePage } from '@/pages/ProfilePage';
 import { TeacherDashboardPage } from '@/pages/teacher/TeacherDashboardPage';
 import { LecturePage } from '@/pages/teacher/LecturePage';
+import GroupsPage from '@/pages/teacher/GroupsPage';
 import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage';
+import { FeynmanPage } from '@/pages/FeynmanPage';
+import { DebatePage } from '@/pages/DebatePage';
 
 function ProtectedRoute({ children, roles }: { children: React.ReactNode; roles?: string[] }) {
   const { isAuthenticated, isLoading, user } = useAuthStore();
@@ -76,6 +81,8 @@ export default function App() {
         <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/subjects" element={<SubjectsPage />} />
+          <Route path="/lectures" element={<LecturesPage />} />
+          <Route path="/messages" element={<MessagesPage />} />
           <Route path="/schedule" element={<SchedulePage />} />
           <Route path="/test/generate" element={<TestGeneratePage />} />
           <Route path="/test/:attemptId/play" element={<TestPlayerPage />} />
@@ -85,6 +92,8 @@ export default function App() {
           <Route path="/review" element={<ReviewPage />} />
           <Route path="/achievements" element={<AchievementsPage />} />
           <Route path="/ai-tutor" element={<AITutorPage />} />
+          <Route path="/feynman" element={<FeynmanPage />} />
+          <Route path="/debate" element={<DebatePage />} />
           <Route path="/profile" element={<ProfilePage />} />
 
           {/* Teacher */}
@@ -93,6 +102,9 @@ export default function App() {
           } />
           <Route path="/teacher/lectures/:id" element={
             <ProtectedRoute roles={['TEACHER', 'ADMIN']}><LecturePage /></ProtectedRoute>
+          } />
+          <Route path="/teacher/groups" element={
+            <ProtectedRoute roles={['TEACHER', 'ADMIN']}><GroupsPage /></ProtectedRoute>
           } />
 
           {/* Admin */}
