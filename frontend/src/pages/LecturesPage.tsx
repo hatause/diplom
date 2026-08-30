@@ -29,7 +29,7 @@ export function LecturesPage() {
       }
       
       // Remove duplicates by ID and sort by createdAt
-      const uniqueLectures = Array.from(new Map(allLectures.map(item => [item.id, item])).values());
+      const uniqueLectures = Array.from(new Map(allLectures.map((item: any) => [item.id, item])).values());
       uniqueLectures.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       
       setLectures(uniqueLectures);

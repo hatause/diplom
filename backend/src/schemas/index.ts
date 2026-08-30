@@ -63,7 +63,24 @@ export const aiExplainSchema = z.object({
   attemptId: z.string().uuid(),
 });
 
-// ── AI response validation schemas ──
+export const feynmanCreateSchema = z.object({
+  topic: z.string().min(1).max(500),
+  subjectId: z.string().uuid().optional(),
+});
+
+export const feynmanExplainSchema = z.object({
+  explanation: z.string().min(1).max(4000),
+});
+
+export const debateCreateSchema = z.object({
+  topic: z.string().min(1).max(500),
+  position: z.string().min(1).max(500),
+  subjectId: z.string().uuid().optional(),
+});
+
+export const debateArgueSchema = z.object({
+  argument: z.string().min(1).max(4000),
+});
 
 export const generatedQuestionSchema = z.object({
   id: z.string(),
@@ -86,3 +103,4 @@ export const generatedTestSchema = z.object({
 
 export type GeneratedTest = z.infer<typeof generatedTestSchema>;
 export type GeneratedQuestion = z.infer<typeof generatedQuestionSchema>;
+

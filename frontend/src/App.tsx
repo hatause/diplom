@@ -27,6 +27,7 @@ import GroupsPage from '@/pages/teacher/GroupsPage';
 import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage';
 import { FeynmanPage } from '@/pages/FeynmanPage';
 import { DebatePage } from '@/pages/DebatePage';
+import { LandingPage } from '@/pages/landing/LandingPage';
 
 function ProtectedRoute({ children, roles }: { children: React.ReactNode; roles?: string[] }) {
   const { isAuthenticated, isLoading, user } = useAuthStore();
@@ -113,7 +114,7 @@ export default function App() {
           } />
         </Route>
 
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/" element={<LandingPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </>

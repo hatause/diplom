@@ -29,6 +29,8 @@ import { lecturesRoutes } from './routes/lectures.routes.js';
 import { groupsRoutes } from './routes/groups.routes.js';
 import { messagesRoutes } from './routes/messages.routes.js';
 import { uploadRoutes } from './routes/upload.routes.js';
+import { feynmanRoutes } from './routes/feynman.routes.js';
+import { debateRoutes } from './routes/debate.routes.js';
 
 async function buildApp() {
   const app = Fastify({
@@ -150,6 +152,8 @@ async function buildApp() {
   await app.register(groupsRoutes, { prefix: `${API_PREFIX}/groups` });
   await app.register(messagesRoutes, { prefix: `${API_PREFIX}/messages` });
   await app.register(uploadRoutes, { prefix: `${API_PREFIX}/upload` });
+  await app.register(feynmanRoutes, { prefix: `${API_PREFIX}/feynman` });
+  await app.register(debateRoutes, { prefix: `${API_PREFIX}/debate` });
 
   // ── Health check ──
   app.get('/health', async () => ({ status: 'ok', name: APP_NAME, timestamp: new Date().toISOString() }));
