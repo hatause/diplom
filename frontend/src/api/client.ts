@@ -34,7 +34,8 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (originalRequest && error.response?.status === 401 && !originalRequest._retry && !originalRequest.url?.startsWith("/auth/")) {
+      originalRequest._retry = true;
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -44,7 +45,6 @@ api.interceptors.response.use(
         });
       }
 
-      originalRequest._retry = true;
       isRefreshing = true;
 
       try {

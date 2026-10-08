@@ -25,6 +25,7 @@
    - [Генерация Тестов в 1 Клик (Магия AI)](#генерация-тестов-в-1-клик-магия-ai)
    - [Аналитика Успеваемости Студентов](#аналитика-успеваемости-студентов)
 4. [🛠 Руководство Администратора](#-руководство-администратора)
+   - [Поиск свободного кабинета](#-поиск-свободного-кабинета)
 5. [🧠 Как работает AI: Техническая Архитектура](#-как-работает-ai-техническая-архитектура)
 6. [⚙️ Установка и Развертывание (Деплой)](#-установка-и-развертывание-деплой)
 
@@ -122,6 +123,56 @@ AI Tutor решает главную проблему современного �
 - Управление всеми пользователями (назначение ролей, блокировка).
 - Просмотр статистики нагрузки (количество пройденных тестов, активных пользователей).
 - Мониторинг логов системных ошибок.
+
+---
+
+## 🚪 Поиск свободного кабинета
+
+Раньше эта функция работала через Telegram-бота ([team-ENERGO](https://github.com/hatause/team-ENERGO)), теперь она доступна на сайте: страница **«Поиск кабинета»** (`/classroom`).
+
+```
+Сайт → Aituto backend (FastAPI) → Java schedule-server (POST /api/bridge) → C++ сервер (TCP) → Java → backend → сайт
+```
+
+- Алгоритм не изменён: Java выбирает ближайшую пару (08:00, 09:30, 11:00, 12:40, 14:10, 15:30, по времени Asia/Almaty, допуск 30 минут) и передаёт C++ серверу `{id, start_time, duration, corpus}` (4 байта длины + JSON).
+- Сайт обращается только к backend. Адрес Java-сервера, порты и ключи хранятся в env backend.
+
+### API
+
+`GET /api/v1/classroom/locations`: список корпусов.
+
+`POST /api/v1/classroom/search` (нужен JWT):
+
+```json
+{ "locationId": "corp_a", "durationMinutes": 80 }
+```
+
+| Ситуация | HTTP | Ответ |
+|---|---|---|
+| Найден | 200 | `{"success": true, "classroom": "А-301", "additionalData": {...}}` |
+| Не найден | 200 | `{"success": false, "reason": "not_found", "message": "..."}` |
+| Неверный запрос | 400 | `reason: "invalid_request"` |
+| Java недоступна | 503 | `reason: "service_unavailable"` |
+| C++ недоступен | 503 | `reason: "search_engine_unavailable"` |
+| Таймаут | 504 | `reason: "timeout"` |
+| Перегрузка | 503 | `reason: "busy"` |
+
+### Запуск локально
+
+Java-сервер из team-ENERGO лежит в `room-finder-java/` (алгоритм не изменён, пароли и адреса вынесены в env).
+
+```bash
+# 1. Java bridge + C++ (если CPP_SERVER_HOST не задан, запускается локальная заглушка C++)
+./scripts/start-room-finder.sh                       # Java на 127.0.0.1:3333
+# с настоящим C++ сервером:
+CPP_SERVER_HOST=<ip> CPP_SERVER_PORT=2222 ./scripts/start-room-finder.sh
+
+# 2. backend (в .env: ROOM_FINDER_JAVA_URL=http://127.0.0.1:3333) и frontend как обычно
+cd python_backend && python run.py
+cd frontend && npm run dev
+```
+
+Переменные Java-сервера: `SERVER_PORT`, `SERVER_ADDRESS` (по умолчанию `127.0.0.1`), `CPP_SERVER_HOST`, `CPP_SERVER_PORT`, `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` (MS SQL нужен только для загрузки расписания и отмены брони, для поиска не нужен).
 
 ---
 

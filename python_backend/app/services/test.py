@@ -54,6 +54,7 @@ class TestService:
         test = await prisma.test.create(  # type: ignore
             data={
                 "title": generated.title,
+                "generatedBy": "gemini",
                 "subjectId": str(params.subjectId),
                 "topic": params.topic,
                 "difficulty": params.difficulty.value,

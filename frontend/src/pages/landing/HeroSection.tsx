@@ -1,8 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, LayoutDashboard } from 'lucide-react';
+import { useAuthStore } from '@/store/auth.store';
 
 export const HeroSection: React.FC = () => {
+  const { isAuthenticated } = useAuthStore();
   return (
     <section style={{
       position: 'relative', zIndex: 10,
@@ -58,14 +60,18 @@ export const HeroSection: React.FC = () => {
 
       {/* CTA */}
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '12px' }}>
-        <Link to="/register" style={{
+        <Link to={isAuthenticated ? "/dashboard" : "/register"} style={{
           display: 'inline-flex', alignItems: 'center', gap: '8px',
           padding: '14px 32px',
           background: '#ff2222', color: '#fff',
           fontSize: '15px', fontWeight: 700,
           borderRadius: '14px', textDecoration: 'none',
         }}>
-          Начать обучение <ArrowRight size={17} />
+          {isAuthenticated ? (
+            <>Перейти в главное меню <LayoutDashboard size={17} /></>
+          ) : (
+            <>Начать обучение <ArrowRight size={17} /></>
+          )}
         </Link>
         <a href="#features" style={{
           display: 'inline-flex', alignItems: 'center', gap: '8px',

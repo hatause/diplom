@@ -39,12 +39,19 @@ class AIService:
                 where={"id": data.subjectId},
                 include={"topics": True},
             )
+            if subject and not data.subject:
+                data = data.model_copy(update={"subject": subject.name})
             if subject:
                 context += f"Current subject: {subject.name}\n"
 
+            # Only public material or lectures belonging to the current user's group.
+            profile = await prisma.studentprofile.find_unique(where={"userId": user_id})
+            lecture_access = [{"groupId": None}, {"teacherId": user_id}]
+            if profile and profile.groupId:
+                lecture_access.append({"groupId": profile.groupId})
             # Fetch related lectures for context
             lectures = await prisma.lecture.find_many(
-                where={"subjectId": data.subjectId},
+                where={"subjectId": data.subjectId, "OR": lecture_access},
                 order={"createdAt": "desc"},
                 take=3
             )
@@ -57,6 +64,8 @@ class AIService:
 
         if data.topicId:
             topic = await prisma.topic.find_unique(where={"id": data.topicId})
+            if topic and not data.topic:
+                data = data.model_copy(update={"topic": topic.name})
             if topic:
                 context += f"Current topic: {topic.name}\n"
 
@@ -74,42 +83,13 @@ class AIService:
                 if p.topic and p.topic.subject:
                     context += f"- {p.topic.subject.name} → {p.topic.name}: {round(p.masteryScore)}% mastery\n"
 
-        # Build messages list (includes conversation history)
-        messages: List[Dict[str, str]] = []
-        if data.conversationHistory:
-            for msg in data.conversationHistory:
-                role = msg.get("role", "user")
-                content = msg.get("content", "")
-                if role in ("user", "assistant") and content:
-                    messages.append({"role": role, "content": content})
-
-        # Append current message with context
-        user_message = data.message
-        if context:
-            user_message = f"[Context: {context}]\n\n{data.message}"
-        messages.append({"role": "user", "content": user_message})
-
-        # Call Gemini with chat (multi-turn conversation)
-        response = await gemini_service.chat(
-            TUTOR_SYSTEM_PROMPT, messages
+        from app.services.companion import companion_service
+        result = await companion_service.chat(
+            user_id, data,
+            initial_history=[{"role": m["role"], "content": m["content"]} for m in (data.conversationHistory or [])],
+            extra_context=context,
         )
-
-        # Log AI interaction
-        try:
-            await prisma.aiinteraction.create(
-                data={
-                    "userId": user_id,
-                    "type": "tutor_chat",
-                    "prompt": data.message[:500],
-                    "response": response[:1000],
-                    "model": "gemini",
-                    "subjectName": data.subjectId or None,
-                }
-            )  # type: ignore
-        except Exception as e:
-            logger.warning("Failed to log AI interaction: %s", e)
-
-        return {"message": response}
+        return {"message": result["messages"][-1]["content"], "conversationId": result["id"]}
 
     async def analyze_result(self, user_id: str, attempt_id: str):
         """Analyze test result — mirrors Node.js ResultAnalysisService.analyze()."""
@@ -121,7 +101,7 @@ class AIService:
                 "answers": {"include": {"question": {"include": {"topic": True}}}},
             },
         )
-        if not attempt:
+        if not attempt or attempt.userId != user_id:
             raise HTTPException(status_code=404, detail="Attempt not found")
 
         wrong_answers = [a for a in (attempt.answers or []) if not a.isCorrect]
@@ -178,7 +158,7 @@ Correct answers by topic:
                     "type": "result_analysis",
                     "prompt": prompt[:500],
                     "response": json.dumps(analysis)[:1000] if isinstance(analysis, dict) else str(analysis)[:1000],
-                    "model": "gemini",
+                    "model": gemini_service.model,
                     "subjectName": subject_name,
                 }
             )  # type: ignore
@@ -189,6 +169,10 @@ Correct answers by topic:
 
     async def explain(self, user_id: str, question_id: str, attempt_id: str):
         """Explain a question — mirrors Node.js ExplanationService.explain()."""
+
+        owned = await prisma.attempt.find_first(where={"id": attempt_id, "userId": user_id})
+        if not owned:
+            raise HTTPException(404, "Attempt not found")
 
         # Find the actual answer (student's response), not just the question
         answer = await prisma.answer.find_first(

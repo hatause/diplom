@@ -8,7 +8,7 @@ interface ThemeState {
 
 export const useThemeStore = create<ThemeState>((set) => ({
   theme: (localStorage.getItem('aitutor-theme') as 'light' | 'dark') ||
-    (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
+    'light',
   toggle: () => set((state) => {
     const next = state.theme === 'light' ? 'dark' : 'light';
     localStorage.setItem('aitutor-theme', next);
@@ -24,5 +24,4 @@ export const useThemeStore = create<ThemeState>((set) => ({
 
 // Initialize theme on load
 const savedTheme = localStorage.getItem('aitutor-theme') as 'light' | 'dark' | null;
-const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-document.documentElement.setAttribute('data-theme', savedTheme || (systemDark ? 'dark' : 'light'));
+document.documentElement.setAttribute('data-theme', savedTheme || 'light');

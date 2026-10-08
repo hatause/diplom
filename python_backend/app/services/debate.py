@@ -66,7 +66,7 @@ class DebateService:
                 "type": "DEBATE_SESSION",
                 "prompt": f"{topic} | Position: {user_position}",
                 "response": json.dumps(session_data, ensure_ascii=False),
-                "model": "gemini",
+                "model": gemini_service.model,
                 "subjectName": subject_id,
             }
         )  # type: ignore

@@ -1,7 +1,7 @@
 import logging
 from typing import List, Optional
 from app.db.database import prisma
-from app.services.ai.gemini import gemini_service
+from app.services.gemini_service import gemini_service
 from app.services.ai.prompts import TEST_GENERATOR_SYSTEM_PROMPT
 from app.schemas.tests import GeneratedTest, GenerateTestRequest, Difficulty, QuestionType
 

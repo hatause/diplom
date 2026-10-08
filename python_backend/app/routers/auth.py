@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, Response, Request
+from fastapi import APIRouter, Depends, Response, Request, HTTPException
+from app.core.config import settings
 from app.schemas.auth import RegisterRequest, LoginRequest, UpdateProfileRequest, ChangePasswordRequest
 from app.services.auth import auth_service
 from app.core.security import get_current_user, TokenData
@@ -13,8 +14,9 @@ async def register(response: Response, payload: RegisterRequest):
         key="refreshToken",
         value=result["refreshToken"],
         httponly=True,
+        secure=settings.NODE_ENV == "production",
         samesite="lax",
-        path="/api/auth",
+        path="/api/v1/auth",
         max_age=7 * 24 * 60 * 60,
     )
     return {"success": True, "data": {"user": result["user"], "accessToken": result["accessToken"]}}
@@ -26,8 +28,9 @@ async def login(response: Response, payload: LoginRequest):
         key="refreshToken",
         value=result["refreshToken"],
         httponly=True,
+        secure=settings.NODE_ENV == "production",
         samesite="lax",
-        path="/api/auth",
+        path="/api/v1/auth",
         max_age=7 * 24 * 60 * 60,
     )
     return {"success": True, "data": {"user": result["user"], "accessToken": result["accessToken"]}}
@@ -46,7 +49,7 @@ async def refresh(request: Request, response: Response):
             pass
 
     if not token:
-        return {"success": False, "error": "No refresh token"}
+        raise HTTPException(401, "No refresh token")
 
     result = await auth_service.refresh(token)
     
@@ -54,8 +57,9 @@ async def refresh(request: Request, response: Response):
         key="refreshToken",
         value=result["refreshToken"],
         httponly=True,
+        secure=settings.NODE_ENV == "production",
         samesite="lax",
-        path="/api/auth",
+        path="/api/v1/auth",
         max_age=7 * 24 * 60 * 60,
     )
     return {"success": True, "data": {"accessToken": result["accessToken"]}}
@@ -73,7 +77,7 @@ async def logout(request: Request, response: Response):
     if token:
         await auth_service.logout(token)
         
-    response.delete_cookie(key="refreshToken", path="/api/auth")
+    response.delete_cookie(key="refreshToken", path="/api/v1/auth")
     return {"success": True}
 
 @router.get("/me")

@@ -20,3 +20,10 @@ coverage/
 .vscode/
 *.sublime-*
 postgres-data/
+room-finder-java/target/
+room-finder-java/logs/
+camera-service/build/
+.codex/
+__pycache__/
+*.py[cod]
+*$py.class

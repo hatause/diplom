@@ -1,9 +1,8 @@
-"""Asynchronous Google Gemini REST client used by AiTutor services.
+"""Shared async Gemini REST client for every AI feature.
 
-Using the public REST API through ``httpx.AsyncClient`` keeps every network
-operation non-blocking and avoids a synchronous SDK hidden inside routes.
+Uses the existing httpx dependency. Provider credentials, raw errors and image
+payloads are never logged. JSON output is validated before it is persisted.
 """
-
 from __future__ import annotations
 
 import asyncio
@@ -13,173 +12,163 @@ from collections.abc import Sequence
 from typing import Any
 
 import httpx
-from json_repair import repair_json
-
+from pydantic import BaseModel, ValidationError
 from app.core.config import settings
 from app.core.errors import ApiError
 
 logger = logging.getLogger(__name__)
-
-MAX_AI_RETRIES = 3
-AI_RETRY_BASE_DELAY_SECONDS = 1.0
-_SAFETY_SETTINGS: list[dict[str, str]] = [
-    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_ONLY_HIGH"},
-    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_ONLY_HIGH"},
-    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_ONLY_HIGH"},
-    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_ONLY_HIGH"},
-]
+MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 
 
 def clean_json_text(text: str) -> str:
-    """Remove common Gemini markdown wrappers while leaving JSON untouched."""
-
     candidate = text.strip()
-    if candidate.startswith("```"):
-        first_newline = candidate.find("\n")
-        if first_newline >= 0:
-            candidate = candidate[first_newline + 1 :]
-        if candidate.rstrip().endswith("```"):
+    if candidate.startswith('```') and '\n' in candidate:
+        candidate = candidate.split('\n', 1)[1]
+        if candidate.rstrip().endswith('```'):
             candidate = candidate.rstrip()[:-3]
     return candidate.strip()
 
 
-def parse_repaired_json(text: str) -> Any:
-    """Parse Gemini JSON and repair recoverable syntax defects deterministically."""
-
-    candidate = clean_json_text(text)
-    try:
-        return json.loads(candidate)
-    except json.JSONDecodeError:
-        # json-repair handles truncated brackets, trailing commas, bare keys,
-        # smart quotes, and similar model-output mistakes before Pydantic checks
-        # the semantic contract in the calling service.
-        repaired = repair_json(candidate, return_objects=False)
-        return json.loads(repaired)
-
-
 class GeminiService:
-    """Minimal retrying async Gemini client with JSON/text/chat helpers."""
-
     def __init__(self) -> None:
         self._client: httpx.AsyncClient | None = None
+        self._slots = asyncio.Semaphore(4)
+
+    @property
+    def model(self) -> str:
+        return settings.GEMINI_MODEL
+
+    def is_configured(self) -> bool:
+        return bool(settings.GEMINI_API_KEY.strip())
 
     async def start(self) -> None:
         if self._client is None:
-            self._client = httpx.AsyncClient(timeout=httpx.Timeout(45.0, connect=10.0))
+            self._client = httpx.AsyncClient(
+                timeout=httpx.Timeout(settings.AI_TIMEOUT_SECONDS, connect=10),
+                limits=httpx.Limits(max_connections=4, max_keepalive_connections=4),
+            )
 
     async def close(self) -> None:
-        if self._client is not None:
+        if self._client:
             await self._client.aclose()
             self._client = None
 
-    async def generate_json(
-        self,
-        system_prompt: str,
-        user_prompt: str,
-        max_output_tokens: int = 4096,
-    ) -> Any:
-        text = await self._generate(
-            contents=[{"role": "user", "parts": [{"text": f"{system_prompt}\n\n---\n\n{user_prompt}"}]}],
-            max_output_tokens=max_output_tokens,
-            response_mime_type="application/json",
-        )
-        try:
-            return parse_repaired_json(text)
-        except (json.JSONDecodeError, TypeError, ValueError) as exc:
-            logger.warning("Gemini produced unrecoverable JSON: %s", exc)
-            raise ApiError.service_unavailable("AI generated an invalid response. Please try again.") from exc
+    @staticmethod
+    def _contents(messages: Sequence[dict[str, Any]]) -> list[dict]:
+        result = []
+        for message in messages:
+            if message['role'] not in ('user', 'assistant'):
+                raise ApiError(400, 'Недопустимая роль сообщения.')
+            content = message['content']
+            if isinstance(content, str):
+                parts = [{'text': content}]
+            else:
+                parts = []
+                for block in content:
+                    if block['type'] == 'text':
+                        parts.append({'text': block['text']})
+                    elif block['type'] == 'image':
+                        parts.append({'inlineData': {'mimeType': block['mimeType'], 'data': block['data']}})
+                    else:
+                        raise ApiError(400, 'Недопустимый тип вложения.')
+            role = 'model' if message['role'] == 'assistant' else 'user'
+            if result and result[-1]['role'] == role:
+                result[-1]['parts'].extend(parts)
+            else:
+                result.append({'role': role, 'parts': parts})
+        return result
 
-    async def generate_text(
-        self,
-        system_prompt: str,
-        user_prompt: str,
-        max_output_tokens: int = 2048,
-    ) -> str:
-        return await self._generate(
-            contents=[{"role": "user", "parts": [{"text": f"{system_prompt}\n\n---\n\n{user_prompt}"}]}],
-            max_output_tokens=max_output_tokens,
-        )
+    async def chat(self, system_prompt: str, messages: Sequence[dict[str, Any]], max_output_tokens: int = 4096) -> str:
+        return await self._generate(system_prompt, self._contents(messages), max_output_tokens)
 
-    async def chat(
-        self,
-        system_prompt: str,
-        messages: Sequence[dict[str, str]],
-        max_output_tokens: int = 2048,
-    ) -> str:
-        contents = [
-            {
-                "role": "model" if message["role"] == "assistant" else "user",
-                "parts": [{"text": message["content"]}],
-            }
-            for message in messages
-        ]
-        if contents and contents[0]["role"] == "user":
-            contents[0]["parts"][0]["text"] = (
-                f"{system_prompt}\n\n---\n\n{contents[0]['parts'][0]['text']}"
-            )
+    async def generate_text(self, system_prompt: str, user_prompt: str, max_output_tokens: int = 4096) -> str:
+        return await self.chat(system_prompt, [{'role': 'user', 'content': user_prompt}], max_output_tokens)
+
+    async def generate_json(self, system_prompt: str, user_prompt: str, max_output_tokens: int = 4096,
+                            response_model: type[BaseModel] | None = None) -> Any:
+        if response_model:
+            system_prompt += '\nReturn only JSON conforming to this schema: ' + json.dumps(response_model.model_json_schema(), ensure_ascii=False)
         else:
-            contents.insert(0, {"role": "user", "parts": [{"text": system_prompt}]})
-        return await self._generate(contents=contents, max_output_tokens=max_output_tokens)
+            system_prompt += '\nReturn only a JSON object matching the requested structure.'
+        text = await self._generate(system_prompt, [{'role': 'user', 'parts': [{'text': user_prompt}]}],
+                                    max_output_tokens, json_mode=True,
+                                    response_schema=response_model.model_json_schema() if response_model else None)
+        try:
+            data = json.loads(clean_json_text(text))
+            if response_model:
+                return response_model.model_validate(data)
+            if not isinstance(data, dict):
+                raise ValueError('Expected an object')
+            return data
+        except (ValueError, TypeError, ValidationError):
+            raise ApiError(502, 'Не удалось проверить учебный материал от AI. Попробуйте ещё раз.') from None
 
-    def is_configured(self) -> bool:
-        return bool(settings.gemini_api_key)
+    async def _generate(self, system_prompt: str, contents: list[dict], max_output_tokens: int,
+                        json_mode: bool = False, response_schema: dict | None = None) -> str:
+        if not self.is_configured():
+            raise ApiError.service_unavailable('AI не настроен: администратору нужно добавить GEMINI_API_KEY.')
+        try:
+            await asyncio.wait_for(self._slots.acquire(), timeout=3)
+        except TimeoutError:
+            raise ApiError(429, 'AI занят. Повторите запрос через несколько секунд.') from None
+        try:
+            # One deadline covers retries as well as connection and response reads.
+            async with asyncio.timeout(settings.AI_TIMEOUT_SECONDS):
+                await self.start()
+                return await self._request(system_prompt, contents, max_output_tokens, json_mode, response_schema)
+        except (TimeoutError, httpx.TimeoutException):
+            raise ApiError(504, 'AI не успел ответить. Попробуйте ещё раз.') from None
+        except httpx.TransportError:
+            raise ApiError.service_unavailable('Нет соединения с AI. Попробуйте позже.') from None
+        finally:
+            self._slots.release()
 
-    async def _generate(
-        self,
-        *,
-        contents: list[dict[str, Any]],
-        max_output_tokens: int,
-        response_mime_type: str | None = None,
-    ) -> str:
-        if not settings.gemini_api_key:
-            raise ApiError.service_unavailable("AI service not configured. Please set GEMINI_API_KEY.")
-        if self._client is None:
-            await self.start()
-        assert self._client is not None
-
-        generation_config: dict[str, Any] = {
-            "maxOutputTokens": max_output_tokens,
-            "temperature": 0.7,
-        }
-        if response_mime_type is not None:
-            generation_config["responseMimeType"] = response_mime_type
-
-        payload = {
-            "contents": contents,
-            "generationConfig": generation_config,
-            "safetySettings": _SAFETY_SETTINGS,
-        }
-        url = (
-            "https://generativelanguage.googleapis.com/v1beta/models/"
-            f"{settings.gemini_model}:generateContent"
-        )
-
-        last_error: Exception | None = None
-        for attempt in range(MAX_AI_RETRIES):
-            try:
-                response = await self._client.post(url, params={"key": settings.gemini_api_key}, json=payload)
-                response.raise_for_status()
-                data = response.json()
-                text = self._response_text(data)
-                if not text.strip():
-                    raise ValueError("Empty response from AI")
-                return text
-            except (httpx.HTTPError, ValueError, KeyError, TypeError) as exc:
-                last_error = exc
-                logger.warning("Gemini generation attempt %s/%s failed: %s", attempt + 1, MAX_AI_RETRIES, exc)
-                if attempt < MAX_AI_RETRIES - 1:
-                    await asyncio.sleep(AI_RETRY_BASE_DELAY_SECONDS * (2**attempt))
-
-        logger.error("Gemini generation failed after retries: %s", last_error)
-        raise ApiError.service_unavailable("AI service temporarily unavailable. Please try again.")
+    async def _request(self, system_prompt, contents, max_output_tokens, json_mode, response_schema=None):
+        config = {'maxOutputTokens': min(max_output_tokens, 16000)}
+        if json_mode:
+            config['responseMimeType'] = 'application/json'
+        if response_schema:
+            config['responseJsonSchema'] = response_schema
+        payload = {'systemInstruction': {'parts': [{'text': system_prompt}]},
+                   'contents': contents, 'generationConfig': config}
+        url = f'https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent'
+        for attempt in range(2):
+            async with self._client.stream('POST', url, headers={'x-goog-api-key': settings.GEMINI_API_KEY}, json=payload) as response:
+                status = response.status_code
+                if status == 200:
+                    raw = bytearray()
+                    async for chunk in response.aiter_bytes():
+                        raw.extend(chunk)
+                        if len(raw) > MAX_RESPONSE_BYTES:
+                            raise ApiError(502, 'AI вернул слишком большой ответ.')
+                    try:
+                        return self._response_text(json.loads(raw))
+                    except (ValueError, TypeError, KeyError, IndexError):
+                        raise ApiError(502, 'AI вернул неполный ответ. Уточните запрос и повторите.') from None
+            # Log only status, never request headers, URLs containing credentials or provider body.
+            logger.warning('Gemini request failed: HTTP %s', status)
+            if status in (429, 500, 502, 503, 504) and attempt == 0:
+                await asyncio.sleep(1)
+                continue
+            if status in (400, 401, 403):
+                raise ApiError.service_unavailable('Gemini отклонил запрос. Проверьте ключ API и доступ к модели на сервере.')
+            if status == 404:
+                raise ApiError.service_unavailable('Модель Gemini недоступна. Проверьте GEMINI_MODEL на сервере.')
+            raise ApiError(429 if status == 429 else 503, 'AI временно недоступен. Попробуйте позже.')
+        raise ApiError.service_unavailable()
 
     @staticmethod
-    def _response_text(payload: dict[str, Any]) -> str:
-        candidates = payload.get("candidates") or []
+    def _response_text(payload: dict) -> str:
+        candidates = payload.get('candidates') or []
         if not candidates:
-            raise ValueError("Gemini returned no candidates")
-        parts = candidates[0].get("content", {}).get("parts", [])
-        return "".join(str(part.get("text", "")) for part in parts)
+            raise ValueError('No answer')
+        candidate = candidates[0]
+        if candidate.get('finishReason') != 'STOP':
+            raise ValueError('Incomplete or blocked answer')
+        text = ''.join(part.get('text', '') for part in candidate.get('content', {}).get('parts', []) if not part.get('thought'))
+        if not text.strip():
+            raise ValueError('Empty answer')
+        return text
 
 
 gemini_service = GeminiService()

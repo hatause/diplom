@@ -8,3 +8,8 @@ python-jose[cryptography]
 python-dotenv
 bcrypt
 email-validator
+python-multipart
+json-repair
+httpx
+
+

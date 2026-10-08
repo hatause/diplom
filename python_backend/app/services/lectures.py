@@ -60,7 +60,7 @@ class LecturesService:
         if not lecture:
             raise HTTPException(status_code=404, detail="Lecture not found")
         
-        from app.services.ai.gemini_service import gemini_service
+        from app.services.gemini_service import gemini_service
         
         system_prompt = "Вы опытный преподаватель. Перескажите и объясните следующую лекцию простым, понятным языком, выделив главные мысли и концепции. Используйте форматирование markdown для лучшей читаемости."
         user_prompt = f"Название лекции: {lecture.title}\n\nТекст лекции:\n{lecture.content}"
@@ -73,7 +73,7 @@ class LecturesService:
                 "type": "LECTURE_EXPLANATION",
                 "prompt": user_prompt[:500],
                 "response": explanation,
-                "model": "gemini-2.5-flash"
+                "model": gemini_service.model
             }
         ) # type: ignore
 

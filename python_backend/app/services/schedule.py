@@ -1,5 +1,7 @@
 from app.db.database import prisma
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+from app.core.config import settings
 
 class ScheduleService:
     def __init__(self):
@@ -29,11 +31,11 @@ class ScheduleService:
         }
 
     async def get_today(self, group_code: str = None):
-        today = datetime.now(timezone.utc).weekday() + 1 # 1=Mon, 7=Sun in python but let's assume JS 0=Sun
+        today = datetime.now(ZoneInfo(settings.SCHOOL_TIMEZONE)).weekday() + 1 # 1=Mon, 7=Sun in python but let's assume JS 0=Sun
         # JS getDay(): 0 is Sunday, 1 is Monday.
         # Python weekday(): 0 is Monday, 6 is Sunday.
         # Let's map python to JS
-        js_today = (datetime.now(timezone.utc).weekday() + 1) % 7
+        js_today = (datetime.now(ZoneInfo(settings.SCHOOL_TIMEZONE)).weekday() + 1) % 7
         
         where_clause = {"isActive": True, "dayOfWeek": js_today}
         if group_code:

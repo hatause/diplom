@@ -3,6 +3,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 from app.core.config import settings
 from pydantic import BaseModel
+from app.db.database import prisma
 
 security = HTTPBearer()
 
@@ -24,7 +25,10 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
                 detail="Could not validate credentials",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        return TokenData(userId=user_id, role=role)
+        user = await prisma.user.find_unique(where={"id": user_id})
+        if not user or not user.isActive:
+            raise HTTPException(status_code=401, detail="Account unavailable")
+        return TokenData(userId=user_id, role=user.role)
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

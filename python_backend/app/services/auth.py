@@ -1,4 +1,5 @@
 import bcrypt
+import uuid
 from datetime import datetime, timedelta, timezone
 from jose import jwt
 from fastapi import HTTPException, status
@@ -19,15 +20,15 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def create_access_token(data: dict) -> str:
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(minutes=15)
-    to_encode.update({"exp": expire})
+    to_encode.update({"exp": expire, "jti": str(uuid.uuid4())})
     return jwt.encode(to_encode, settings.JWT_SECRET, algorithm="HS256")
 
 def create_refresh_token(data: dict) -> str:
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(days=7)
-    to_encode.update({"exp": expire})
+    to_encode.update({"exp": expire, "jti": str(uuid.uuid4())})
     # We use JWT_SECRET for refresh token as well, or REFRESH_TOKEN_SECRET if available
-    secret = getattr(settings, "REFRESH_TOKEN_SECRET", settings.JWT_SECRET)
+    secret = settings.REFRESH_TOKEN_SECRET or settings.JWT_SECRET
     return jwt.encode(to_encode, secret, algorithm="HS256")
 
 class AuthService:
@@ -48,6 +49,8 @@ class AuthService:
         return {"accessToken": access_token, "refreshToken": refresh_token}
 
     async def register(self, data: RegisterRequest):
+        if data.role not in (None, Role.STUDENT):
+            raise HTTPException(403, "Only an administrator can grant staff roles")
         existing = await prisma.user.find_unique(where={"email": data.email})
         if existing:
             raise HTTPException(status_code=409, detail="Email already registered")
@@ -119,7 +122,7 @@ class AuthService:
                 await prisma.refreshtoken.delete(where={"id": stored.id})
             raise HTTPException(status_code=401, detail="Invalid refresh token")
 
-        secret = getattr(settings, "REFRESH_TOKEN_SECRET", settings.JWT_SECRET)
+        secret = settings.REFRESH_TOKEN_SECRET or settings.JWT_SECRET
         try:
             payload = jwt.decode(refresh_token, secret, algorithms=["HS256"])
         except Exception:
