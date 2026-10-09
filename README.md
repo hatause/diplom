@@ -3,7 +3,7 @@
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![React](https://img.shields.io/badge/React-19-61dafb.svg?logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178c6.svg?logo=typescript)
-![Node.js](https://img.shields.io/badge/Node.js-Fastify-339933.svg?logo=node.js)
+![Python](https://img.shields.io/badge/Python-FastAPI-009688.svg?logo=fastapi)
 ![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED.svg?logo=docker)
 
 Добро пожаловать в **AI Tutor** — инновационную образовательную платформу, где Искусственный Интеллект (на базе Google Gemini) берет на себя роль вашего персонального репетитора.
@@ -178,9 +178,9 @@ cd frontend && npm run dev
 
 ## 🧠 Как работает AI: Техническая Архитектура
 
-Проект построен как монорепозиторий и разделен на две основные части: **Frontend** (React + Vite) и **Backend** (Node.js + Fastify).
+Проект построен как монорепозиторий: **Frontend** (React + Vite, `frontend/`) и единственный **Backend** (Python + FastAPI, `python_backend/`). Java/C++ используются отдельно для поиска кабинетов. Старый Node.js-бэкенд удалён.
 
-### Сервис Генерации Тестов (`test-generation.service.ts`)
+### Сервис генерации тестов (`python_backend/app/services/ai/test_generation.py`)
 Это сердце платформы. Когда поступает запрос на генерацию теста, сервис выполняет следующие шаги:
 1. **Сбор контекста обучения (Learning Context)**:
    Делается сложный запрос в PostgreSQL (через Prisma ORM) для получения последних попыток (`attempts`) пользователя, вычисления средних баллов и извлечения списка неправильных ответов.
@@ -189,12 +189,12 @@ cd frontend && npm run dev
    *«Сгенерируй тест из 10 вопросов. Студент слаб в темах: Алгебра, Дроби. В последних тестах он ошибался в "Умножении матриц". Сделай упор на эти темы.»*
 3. **Запрос к Gemini API**:
    Используется модель Gemini с требованием вернуть ответ строго в формате JSON.
-4. **Валидация (Zod)**:
-   Полученный от ИИ JSON прогоняется через схему валидации Zod. Если ИИ ошибся в структуре, система пытается автоматически "починить" JSON (например, добавить недостающие ID), либо просит ИИ переделать задачу.
+4. **Валидация (Pydantic)**:
+   Полученный от ИИ JSON проверяется Python-схемами перед использованием в приложении.
 
 ### Технологический Стек
 * **Frontend**: React 19, TailwindCSS v4, Zustand, Radix UI. Интерфейс следует стилю "Liquid Glass" с плавными анимациями (Framer Motion).
-* **Backend**: Fastify (очень быстрый веб-фреймворк), Prisma ORM для типобезопасной работы с БД.
+* **Backend**: Python, FastAPI, Pydantic, Prisma Python для работы с БД.
 * **База данных**: PostgreSQL 16.
 * **Деплой**: Docker & Docker Compose.
 
@@ -202,7 +202,7 @@ cd frontend && npm run dev
 
 ## ⚙️ Установка и Развертывание (Деплой)
 
-Для локального запуска или деплоя на сервер используется Docker Compose.
+Для локального запуска или деплоя используется Docker Compose 2.24+. Запуск Python без Docker описан в [python_backend/README.md](python_backend/README.md).
 
 ### Шаг 1. Клонирование и настройка
 ```bash
@@ -212,25 +212,33 @@ cp .env.example .env
 ```
 Откройте файл `.env` и впишите туда ваш `GEMINI_API_KEY` (ключ можно получить в Google AI Studio).
 
-### Шаг 2. Запуск контейнеров
+### Шаг 2. Сборка и запуск базы
 ```bash
-docker-compose up -d --build
-```
-Это поднимет:
-- Базу данных PostgreSQL (порт 5433)
-- Backend (порт 4000)
-- Frontend (порт 5173)
-
-### Шаг 3. Инициализация Базы Данных
-Чтобы создать таблицы и заполнить их тестовыми данными:
-```bash
-docker exec aitutor-backend npx prisma db push
-docker exec aitutor-backend npm run prisma:seed
+docker compose build
+docker compose up -d postgres
 ```
 
-### Тестовые Аккаунты (Пароль: `password123`)
+### Шаг 3. Инициализация новой базы
+Если таблицы уже существуют, их перенос не требуется: Python использует ту же схему PostgreSQL. Для новой базы:
+```bash
+docker compose run --rm backend prisma db push --schema schema.prisma --skip-generate
+docker compose run --rm backend python scripts/seed.py
+# Необязательно: демонстрационные аккаунты, предметы и расписание
+docker compose run --rm backend python scripts/seed.py --demo
+```
+
+### Шаг 4. Запуск сайта
+```bash
+docker compose up -d
+```
+
+Сервисы: PostgreSQL — порт 5433, Python API — порт 4000, frontend — порт 5173. Vite направляет `/api` на Python-сервис `backend`. Файлы пользователей сохраняются в `python_backend/uploads`, база — в существующем томе `postgres-data`. Автоматического заполнения или изменения схемы при старте нет.
+
+Production использует тот же Python Dockerfile: `docker compose -f docker-compose.prod.yml up -d --build`. Настройте секреты, `CORS_ORIGIN` и HTTPS-прокси. Для Java на отдельной машине задайте `ROOM_FINDER_JAVA_URL_DOCKER` в корневом `.env`; по умолчанию контейнер обращается к Java на хосте.
+
+### Тестовые аккаунты после `seed.py --demo` (пароль новых аккаунтов: `password123`)
 * **Студент**: `student@aitutor.com`
-* **Преподаватель**: `petrov@aitutor.com` (или `teacher@aitutor.com`)
+* **Преподаватель**: `petrov@aitutor.com`
 * **Админ**: `admin@aitutor.com`
 
 ---

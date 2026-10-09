@@ -1,4 +1,4 @@
-version: '3.8'
+name: aitutor
 
 services:
   postgres:
@@ -12,7 +12,7 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U aitutor"]
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -21,14 +21,22 @@ services:
 
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile.prod
+      context: ./python_backend
+      dockerfile: Dockerfile
     container_name: aitutor-backend
     restart: always
-    env_file: .env
+    env_file:
+      - .env
+      - path: ./python_backend/.env
+        required: false
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-aitutor}:${POSTGRES_PASSWORD:-aitutor_secret}@postgres:5432/${POSTGRES_DB:-aitutor}?schema=public
       NODE_ENV: production
+      ROOM_FINDER_JAVA_URL: ${ROOM_FINDER_JAVA_URL_DOCKER:-http://host.docker.internal:3333}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./python_backend/uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -42,7 +50,8 @@ services:
     container_name: aitutor-frontend
     restart: always
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - aitutor-net
 

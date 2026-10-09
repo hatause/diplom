@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, Query, Path, Body
 from app.core.security import get_current_user, require_roles, TokenData
 from app.schemas.admin import UserCreate, UserUpdate, GroupCreate, GroupTeacherAdd, SubjectCreate, TopicCreate
 from app.services.admin import admin_service
+from app.services.schedule import schedule_service
+from app.schemas.schedule import ScheduleItemWrite, ScheduleClearRequest
 from typing import Optional
 from prisma.enums import Role
 
@@ -79,3 +81,40 @@ async def create_topic(
 async def get_dashboard():
     stats = await admin_service.get_dashboard_stats()
     return {"success": True, "data": stats}
+
+
+@router.get("/schedule")
+async def get_schedule():
+    return {"success": True, "data": await schedule_service.get_admin_schedule()}
+
+
+@router.post("/schedule", status_code=201)
+async def create_schedule_item(
+    payload: ScheduleItemWrite,
+    current_user: TokenData = Depends(get_current_user),
+):
+    data = await schedule_service.create_item(current_user.userId, payload)
+    return {"success": True, "data": data}
+
+
+@router.put("/schedule/{id}")
+async def update_schedule_item(
+    id: str,
+    payload: ScheduleItemWrite,
+    current_user: TokenData = Depends(get_current_user),
+):
+    data = await schedule_service.update_item(current_user.userId, id, payload)
+    return {"success": True, "data": data}
+
+
+@router.delete("/schedule/{id}")
+async def delete_schedule_item(id: str, current_user: TokenData = Depends(get_current_user)):
+    return {"success": True, "data": await schedule_service.delete_item(current_user.userId, id)}
+
+
+@router.delete("/schedule")
+async def clear_schedule(
+    payload: ScheduleClearRequest,
+    current_user: TokenData = Depends(get_current_user),
+):
+    return {"success": True, "data": await schedule_service.clear_items(current_user.userId)}

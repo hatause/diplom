@@ -3,13 +3,12 @@ import shutil
 import uuid
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from app.core.security import require_roles
+from app.core.config import UPLOAD_DIR
 from prisma.enums import Role
 
 router = APIRouter(prefix="/upload", tags=["Upload"])
 
-UPLOAD_DIR = os.path.join(os.getcwd(), "uploads")
-if not os.path.exists(UPLOAD_DIR):
-    os.makedirs(UPLOAD_DIR)
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 @router.post("", dependencies=[Depends(require_roles([Role.TEACHER, Role.ADMIN]))])
 async def upload_file(file: UploadFile = File(...)):

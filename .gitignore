@@ -4,6 +4,11 @@ build/
 .env
 .env.local
 .env.*.local
+.env.legacy
+.env.docker-legacy
+.venv/
+venv/
+python_backend/uploads/
 *.log
 *.pid
 *.seed

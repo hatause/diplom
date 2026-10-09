@@ -10,6 +10,7 @@ except ImportError:
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
 ROOT_DIR = BACKEND_DIR.parent
+UPLOAD_DIR = BACKEND_DIR / "uploads"
 
 # Автоматически загружаем .env из папки python_backend и корня проекта
 if _HAS_DOTENV:

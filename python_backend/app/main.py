@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 import logging
 
 from app.db.database import connect_db, disconnect_db
-from app.core.config import settings
+from app.core.config import settings, UPLOAD_DIR
 from app.services.gemini_service import gemini_service
 from app.routers import companion
 from app.routers import tests, auth, admin, subjects, attempts, analytics, lectures, schedule, groups, teacher, messages, review, upload, achievements, ai, feynman, debate, classroom
@@ -70,10 +70,7 @@ app.include_router(debate.router, prefix="/api/v1")
 app.include_router(classroom.router, prefix="/api/v1")
 app.include_router(companion.router, prefix="/api/v1")
 
-import os
-UPLOAD_DIR = os.path.join(os.getcwd(), "uploads")
-if not os.path.exists(UPLOAD_DIR):
-    os.makedirs(UPLOAD_DIR)
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/api/v1/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 @app.get("/health")
@@ -92,4 +89,3 @@ if __name__ == "__main__":
         sys.path.insert(0, str(BASE_DIR))
 
     uvicorn.run("app.main:app", host="0.0.0.0", port=4000, reload=True)
-

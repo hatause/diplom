@@ -1,6 +1,6 @@
 import React from 'react';
 
-const tech = ['React', 'Node.js', 'Fastify', 'Prisma', 'PostgreSQL', 'Google Gemini', 'Zod'];
+const tech = ['React', 'Python', 'FastAPI', 'Prisma', 'PostgreSQL', 'Google Gemini', 'Pydantic'];
 
 export const TechStackSection: React.FC = () => {
   return (

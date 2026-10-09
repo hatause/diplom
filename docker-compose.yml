@@ -1,4 +1,4 @@
-version: '3.8'
+name: aitutor
 
 services:
   postgres:
@@ -21,21 +21,29 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: ./python_backend
       dockerfile: Dockerfile
     container_name: aitutor-backend
     restart: unless-stopped
-    env_file: .env
+    env_file:
+      - .env
+      - path: ./python_backend/.env
+        required: false
     environment:
       DATABASE_URL: postgresql://aitutor:aitutor_secret@postgres:5432/aitutor?schema=public
+      NODE_ENV: development
+      ROOM_FINDER_JAVA_URL: ${ROOM_FINDER_JAVA_URL_DOCKER:-http://host.docker.internal:3333}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "4000", "--reload"]
     ports:
       - "4000:4000"
     depends_on:
       postgres:
         condition: service_healthy
     volumes:
-      - ./backend/src:/app/src
-      - ./backend/prisma:/app/prisma
+      - ./python_backend/app:/app/app
+      - ./python_backend/uploads:/app/uploads
 
   frontend:
     build:
@@ -43,12 +51,15 @@ services:
       dockerfile: Dockerfile
     container_name: aitutor-frontend
     restart: unless-stopped
+    environment:
+      BACKEND_URL: http://backend:4000
     ports:
       - "5173:5173"
     volumes:
       - ./frontend/src:/app/src
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 volumes:
   postgres-data:

@@ -2,11 +2,18 @@ import { useEffect, useState } from 'react';
 import { api } from '@/api/client';
 import { motion } from 'framer-motion';
 import { Calendar, Clock, MapPin, User, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { useAuthStore } from '@/store/auth.store';
+import { ScheduleManager } from '@/components/ScheduleManager';
 
 const DAYS = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
 const DAYS_SHORT = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 
 export function SchedulePage() {
+  const isAdmin = useAuthStore(state => state.user?.role === 'ADMIN');
+  return isAdmin ? <ScheduleManager /> : <ScheduleView />;
+}
+
+function ScheduleView() {
   const [view, setView] = useState<'today' | 'week'>('week');
   const [data, setData] = useState<any>(null);
   const [status, setStatus] = useState<any>(null);
@@ -28,10 +35,7 @@ export function SchedulePage() {
   useEffect(() => { load(); }, [view]);
 
   const handleSync = async () => {
-    try {
-      await api.post('/schedule/sync');
-      load();
-    } catch {}
+    await load();
   };
 
   const today = new Date().getDay();
@@ -65,7 +69,7 @@ export function SchedulePage() {
               </button>
             ))}
           </div>
-          <button onClick={handleSync} className="p-2 rounded-xl glass" title="Синхронизировать">
+          <button onClick={handleSync} className="p-2 rounded-xl glass" title="Обновить расписание">
             <RefreshCw size={18} style={{ color: 'var(--text-secondary)' }} />
           </button>
         </div>
@@ -108,7 +112,7 @@ export function SchedulePage() {
       ) : (
         /* Week view */
         <div className="space-y-6">
-          {[1, 2, 3, 4, 5, 6].map(day => {
+          {[1, 2, 3, 4, 5, 6, 0].map(day => {
             const dayItems = data?.week?.[day] || [];
             if (dayItems.length === 0) return null;
             return (
@@ -126,6 +130,7 @@ export function SchedulePage() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{item.subject?.name}</p>
                         <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{item.teacherName}</p>
+                        {item.weekType && <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{item.weekType === 'odd' ? 'Нечётная неделя' : 'Чётная неделя'}</p>}
                       </div>
                       <div className="text-right shrink-0">
                         <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{item.startTime}</p>

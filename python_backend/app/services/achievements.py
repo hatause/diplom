@@ -1,4 +1,5 @@
 from app.db.database import prisma
+from app.core.utils import parse_db_json
 
 class AchievementsService:
     async def get_achievements(self, user_id: str):
@@ -17,14 +18,10 @@ class AchievementsService:
         return {
             "achievements": [
                 {
-                    "id": a.id,
-                    "title": a.title,
-                    "description": a.description,
-                    "iconName": a.iconName,
-                    "color": a.color,
-                    "xpReward": a.xpReward,
-                    "conditionType": a.conditionType,
-                    "conditionValue": a.conditionValue,
+                    **a.model_dump(),
+                    "title": a.name,
+                    "conditionType": parse_db_json(a.condition).get("type"),
+                    "conditionValue": parse_db_json(a.condition).get("value"),
                     "isUnlocked": a.id in unlocked_map,
                     "unlockedAt": unlocked_map[a.id].isoformat() if a.id in unlocked_map and unlocked_map[a.id] else None
                 } for a in all_achievements

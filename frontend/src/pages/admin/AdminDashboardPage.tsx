@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '@/api/client';
 import { motion } from 'framer-motion';
 import { Shield, Users, BookOpen, BarChart3, FileText, GraduationCap, Plus, Calendar } from 'lucide-react';
+import { ScheduleManager } from '@/components/ScheduleManager';
 
 export function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -82,7 +83,7 @@ export function AdminDashboardPage() {
         {activeTab === 'users' && <UsersTab users={usersList} groups={groupsList} onRefresh={fetchData} />}
         {activeTab === 'groups' && <GroupsTab groups={groupsList} users={usersList} onRefresh={fetchData} />}
         {activeTab === 'subjects' && <SubjectsTab subjects={subjectsList} users={usersList} onRefresh={fetchData} />}
-        {activeTab === 'schedule' && <ScheduleTab groups={groupsList} subjects={subjectsList} onRefresh={fetchData} />}
+        {activeTab === 'schedule' && <ScheduleManager embedded />}
       </motion.div>
     </div>
   );
@@ -314,55 +315,6 @@ function SubjectsTab({ subjects, users, onRefresh }: { subjects: any[], users: a
           ))}
         </div>
       </div>
-    </div>
-  );
-}
-
-function ScheduleTab({ groups, subjects, onRefresh }: { groups: any[], subjects: any[], onRefresh: () => void }) {
-  const [form, setForm] = useState({ groupId: '', subjectId: '', dayOfWeek: 1, startTime: '09:00', endTime: '10:30', room: '' });
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await api.post('/admin/schedule', {
-      ...form,
-      dayOfWeek: parseInt(form.dayOfWeek.toString())
-    });
-    alert('Расписание добавлено!');
-    setForm({ groupId: '', subjectId: '', dayOfWeek: 1, startTime: '09:00', endTime: '10:30', room: '' });
-  };
-
-  return (
-    <div className="glass-card p-6 max-w-2xl">
-      <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Calendar size={20}/> Добавить занятие в расписание</h3>
-      <form onSubmit={submit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <select className="input-field w-full" required value={form.groupId} onChange={e => setForm({...form, groupId: e.target.value})}>
-            <option value="">Группа...</option>
-            {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-          </select>
-          <select className="input-field w-full" required value={form.subjectId} onChange={e => setForm({...form, subjectId: e.target.value})}>
-            <option value="">Предмет...</option>
-            {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-        </div>
-        
-        <div className="grid grid-cols-3 gap-4">
-          <select className="input-field w-full" required value={form.dayOfWeek} onChange={e => setForm({...form, dayOfWeek: parseInt(e.target.value)})}>
-            <option value={1}>Понедельник</option>
-            <option value={2}>Вторник</option>
-            <option value={3}>Среда</option>
-            <option value={4}>Четверг</option>
-            <option value={5}>Пятница</option>
-            <option value={6}>Суббота</option>
-          </select>
-          <input className="input-field w-full" type="time" required value={form.startTime} onChange={e => setForm({...form, startTime: e.target.value})} />
-          <input className="input-field w-full" type="time" required value={form.endTime} onChange={e => setForm({...form, endTime: e.target.value})} />
-        </div>
-
-        <input className="input-field w-full" placeholder="Аудитория (Напр. А-301)" value={form.room} onChange={e => setForm({...form, room: e.target.value})} />
-        
-        <button className="btn-primary w-full mt-4">Добавить занятие</button>
-      </form>
     </div>
   );
 }
