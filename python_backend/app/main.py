@@ -23,9 +23,22 @@ logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(title="AiTutor Backend (Python)", version="1.0.0")
 
+cors_origins = [origin.strip() for origin in settings.CORS_ORIGIN.split(",") if origin.strip()]
+for default_origin in [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:4000",
+    "http://127.0.0.1:4000",
+]:
+    if default_origin not in cors_origins:
+        cors_origins.append(default_origin)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[origin.strip() for origin in settings.CORS_ORIGIN.split(",") if origin.strip()],
+    allow_origins=cors_origins,
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

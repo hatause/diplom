@@ -96,7 +96,8 @@ class AuthService:
         return {"user": safe_user, **tokens}
 
     async def login(self, data: LoginRequest):
-        user = await prisma.user.find_unique(where={"email": data.email})
+        clean_email = str(data.email).strip().lower()
+        user = await prisma.user.find_unique(where={"email": clean_email})
         if not user or not user.isActive:
             raise HTTPException(status_code=401, detail="Invalid credentials")
 

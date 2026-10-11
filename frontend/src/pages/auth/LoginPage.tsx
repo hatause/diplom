@@ -16,9 +16,15 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      await login(email, password);
+      await login(email.trim().toLowerCase(), password);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Ошибка входа');
+      const msg =
+        err.response?.data?.detail ||
+        err.response?.data?.error ||
+        (err.code === 'ERR_NETWORK' ? 'Сервер недоступен (ошибка сети)' : '') ||
+        err.message ||
+        'Неверный email или пароль';
+      setError(typeof msg === 'string' ? msg : 'Неверный email или пароль');
     } finally {
       setLoading(false);
     }
