@@ -1,16 +1,21 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '@/api/client';
+import { errorText } from '@/api/companion';
+import { ErrorNotice } from '@/components/CompanionUI';
 import { motion } from 'framer-motion';
 import { RefreshCcw, Brain, Clock, AlertCircle } from 'lucide-react';
 
 export function ReviewPage() {
   const [topics, setTopics] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    api.get('/review').then(res => { setTopics(res.data.data || []); setLoading(false); }).catch(() => setLoading(false));
+    api.get('/review').then(res => { setTopics(res.data.data || []); setLoading(false); }).catch((err) => { setError(errorText(err)); setLoading(false); });
   }, []);
+
+  if (error) return <ErrorNotice message={error} retry={() => window.location.reload()} />;
 
   return (
     <div className="space-y-6">
@@ -38,7 +43,7 @@ export function ReviewPage() {
                   <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{tp.subjectName} • {tp.masteryLevel} ({tp.masteryScore}%)</p>
                   {tp.lastStudiedAt && <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>Последнее изучение: {new Date(tp.lastStudiedAt).toLocaleDateString('ru-RU')}</p>}
                 </div>
-                <Link to={`/test/generate?subjectId=${tp.subjectId}`} className="px-4 py-2 rounded-xl text-xs font-medium text-white shrink-0" style={{ background: 'var(--accent-gradient)' }}>
+                <Link to={`/test/generate?subjectId=${tp.subjectId}&topic=${encodeURIComponent(tp.topicName)}`} className="px-4 py-2 rounded-xl text-xs font-medium text-white shrink-0" style={{ background: 'var(--accent-gradient)' }}>
                   <Brain size={14} className="inline mr-1" /> Повторить
                 </Link>
               </motion.div>

@@ -1,15 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '@/api/client';
+import { errorText } from '@/api/companion';
+import { toast } from 'sonner';
+import { ErrorNotice } from '@/components/CompanionUI';
 import { motion } from 'framer-motion';
 import { GraduationCap, Users, BarChart3, Clock, BookOpen, Plus, FileText } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 export function TeacherDashboardPage() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [data, setData] = useState<any>(null);
   const [groups, setGroups] = useState<any[]>([]);
-  const [lectures, setLectures] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -17,6 +20,7 @@ export function TeacherDashboardPage() {
 
   const fetchData = async () => {
     setLoading(true);
+    setError('');
     try {
       const [dashRes, groupsRes] = await Promise.all([
         api.get('/teacher/dashboard'),
@@ -25,16 +29,14 @@ export function TeacherDashboardPage() {
       setData(dashRes.data.data);
       setGroups(groupsRes.data.data || []);
       
-      // If we have groups, fetch lectures for the first one, or fetch all lectures.
-      // For simplicity, let's just fetch lectures when a group is selected, or we can fetch for all groups.
-      // But we need group-specific lectures. Let's add a function to load them.
     } catch (e) {
-      console.error(e);
+      setError(errorText(e));
     }
     setLoading(false);
   };
 
   if (loading) return <div className="space-y-4">{[...Array(3)].map((_, i) => <div key={i} className="skeleton h-32 rounded-2xl" />)}</div>;
+  if (error || !data) return <ErrorNotice message={error || 'Не удалось загрузить панель'} retry={fetchData} />;
 
   return (
     <div className="space-y-6">
@@ -71,7 +73,7 @@ function DashboardTab({ data }: { data: any }) {
           { label: 'Предметов', value: data?.subjects?.length || 0, icon: BookOpen, color: '#6366F1' },
           { label: 'Студентов', value: data?.totalStudents || 0, icon: Users, color: '#10B981' },
           { label: 'Средний балл', value: `${data?.avgScore || 0}%`, icon: BarChart3, color: '#F59E0B' },
-        ].map((stat, i) => (
+        ].map(stat => (
           <div key={stat.label} className="glass-card p-5">
             <stat.icon size={20} style={{ color: stat.color }} className="mb-2" />
             <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{stat.value}</p>
@@ -110,24 +112,26 @@ function DashboardTab({ data }: { data: any }) {
 }
 
 function LecturesTab({ groups, subjects }: { groups: any[], subjects: any[] }) {
-  const [form, setForm] = useState({ title: '', content: '', groupId: '', subjectId: '', file: null as File | null });
   const [lectures, setLectures] = useState<any[]>([]);
+  const [form, setForm] = useState({ title: '', content: '', groupId: '', subjectId: '', file: null as File | null });
   const [selectedGroup, setSelectedGroup] = useState<string>('public');
   const [uploading, setUploading] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (selectedGroup === 'public') {
-      api.get(`/lectures/public`).then(res => setLectures(res.data.data));
-    } else if (selectedGroup) {
-      api.get(`/lectures/group/${selectedGroup}`).then(res => setLectures(res.data.data));
-    } else {
-      setLectures([]);
-    }
+    const controller = new AbortController();
+    setLectures([]);
+    const url = selectedGroup === 'public' ? '/lectures/public' : `/lectures/group/${selectedGroup}`;
+    api.get(url, { signal: controller.signal })
+      .then(res => { if (!controller.signal.aborted) setLectures(res.data.data); })
+      .catch(e => { if (!controller.signal.aborted) toast.error(errorText(e)); });
+    return () => controller.abort();
   }, [selectedGroup]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (uploading) return;
     setUploading(true);
     try {
       let fileUrl = undefined;
@@ -152,17 +156,20 @@ function LecturesTab({ groups, subjects }: { groups: any[], subjects: any[] }) {
         fileName 
       });
       
-      alert('Лекция добавлена!');
+      toast.success('Лекция добавлена!');
       setForm({ ...form, title: '', content: '', file: null });
+      if (fileInput.current) fileInput.current.value = '';
       if (form.groupId === selectedGroup || (!form.groupId && selectedGroup === 'public')) {
         if (!form.groupId) {
-          api.get(`/lectures/public`).then(res => setLectures(res.data.data));
+          const res = await api.get(`/lectures/public`);
+          setLectures(res.data.data);
         } else {
-          api.get(`/lectures/group/${selectedGroup}`).then(res => setLectures(res.data.data));
+          const res = await api.get(`/lectures/group/${selectedGroup}`);
+          setLectures(res.data.data);
         }
       }
     } catch (e: any) {
-      alert('Ошибка при создании лекции');
+      toast.error(errorText(e));
     }
     setUploading(false);
   };
@@ -181,12 +188,12 @@ function LecturesTab({ groups, subjects }: { groups: any[], subjects: any[] }) {
             <option value="">Выберите предмет...</option>
             {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
-          <textarea className="input-field w-full h-32" placeholder="Текст лекции..." required value={form.content} onChange={e => setForm({...form, content: e.target.value})} />
+          <textarea className="input-field w-full h-32" placeholder="Текст лекции (можно оставить пустым при прикреплённом файле)" required={!form.file} value={form.content} onChange={e => setForm({...form, content: e.target.value})} />
           
           <div className="border border-dashed border-[var(--border-subtle)] p-4 rounded-xl">
-            <label className="block text-sm text-[var(--text-secondary)] mb-2 font-medium">Прикрепить файл (опционально)</label>
+            <label className="block text-sm text-[var(--text-secondary)] mb-2 font-medium">Прикрепить файл (до 12 МБ)</label>
             <input 
-              type="file" 
+              type="file" ref={fileInput}
               className="text-sm text-[var(--text-primary)] file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-[var(--accent-1)] file:text-white hover:file:opacity-90"
               onChange={e => setForm({...form, file: e.target.files?.[0] || null})}
             />
@@ -208,7 +215,7 @@ function LecturesTab({ groups, subjects }: { groups: any[], subjects: any[] }) {
         {selectedGroup && (
           <div className="space-y-3 mt-4 max-h-[500px] overflow-y-auto pr-2">
             {lectures.map(l => (
-              <div key={l.id} className="p-4 border rounded-xl hover:border-[var(--primary)] transition-colors cursor-pointer group" style={{ borderColor: 'var(--border-subtle)' }} onClick={() => navigate(`/teacher/lectures/${l.id}`)}>
+              <div key={l.id} className="p-4 border rounded-xl hover:border-[var(--primary)] transition-colors cursor-pointer group" style={{ borderColor: 'var(--border-subtle)' }} onClick={() => navigate(`/lectures/${l.id}`)}>
                 <div className="flex justify-between items-start">
                   <div>
                     <h4 className="font-bold text-[var(--text-primary)] group-hover:text-[var(--primary)]">{l.title}</h4>
@@ -235,7 +242,7 @@ function SubjectsTab({ subjects, onRefresh }: { subjects: any[], onRefresh: () =
       setForm({ name: '', code: '', description: '' });
       onRefresh();
     } catch (e) {
-      alert('Ошибка при создании предмета');
+      toast.error(errorText(e));
     }
   };
 

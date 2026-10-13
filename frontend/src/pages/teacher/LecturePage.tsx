@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '@/api/client';
-import { Bot, FileText, ArrowLeft, Play, LayoutDashboard, Download } from 'lucide-react';
+import { errorText } from '@/api/companion';
+import { Bot, FileText, ArrowLeft, Download } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 export function LecturePage() {
@@ -11,40 +12,79 @@ export function LecturePage() {
   const [explanation, setExplanation] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [aiLoading, setAiLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [extractedText, setExtractedText] = useState('');
+  const [generatedTest, setGeneratedTest] = useState<any>(null);
 
   useEffect(() => {
+    setLoading(true);
+    setLecture(null);
+    setExplanation('');
+    setExtractedText('');
+    setGeneratedTest(null);
+    setError('');
     api.get(`/lectures/${id}`).then(res => {
       setLecture(res.data.data);
       setLoading(false);
-    }).catch(() => {
-      alert('Лекция не найдена');
-      navigate(-1);
+    }).catch((e) => {
+      setError(errorText(e));
+      setLoading(false);
     });
   }, [id, navigate]);
 
+  const downloadFile = async () => {
+    try {
+      const { data } = await api.get(lecture.fileUrl.replace(/^\/api\/v1/, ''), { responseType: 'blob' });
+      const url = URL.createObjectURL(data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = lecture.fileName || 'lecture';
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) { setError(errorText(e)); }
+  };
+
   const explainLecture = async () => {
+    setError('');
     setAiLoading(true);
     try {
       const res = await api.post(`/lectures/${id}/explain`);
       setExplanation(res.data.data.explanation);
     } catch (e) {
-      alert('Ошибка при генерации объяснения');
+      setError(errorText(e));
     }
     setAiLoading(false);
   };
 
   const generateTest = async () => {
+    setError('');
     setAiLoading(true);
     try {
-      const res = await api.post(`/lectures/${id}/generate-test`);
-      alert('Тест успешно сгенерирован и добавлен в базу!');
+      const test = generatedTest || (await api.post(`/lectures/${id}/generate-test`)).data.data;
+      setGeneratedTest(test);
+      const { data } = await api.post(`/tests/${test.id}/start`);
+      navigate(`/test/${data.data.id}/play`, { state: { test } });
     } catch (e) {
-      alert('Ошибка при генерации теста');
+      setError(errorText(e));
     }
     setAiLoading(false);
   };
 
+  const extractText = async () => {
+    setError('');
+    setAiLoading(true);
+    try {
+      const { data } = await api.post(`/lectures/${id}/extract-text`);
+      setExtractedText(data.data.text);
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   if (loading) return <div className="skeleton h-64 rounded-2xl" />;
+  if (!lecture) return <p role="alert" className="glass-card p-6">{error || 'Лекция не найдена'}</p>;
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-20">
@@ -75,26 +115,27 @@ export function LecturePage() {
                 <p className="text-xs text-[var(--text-secondary)]">{lecture.fileName || 'Файл'}</p>
               </div>
             </div>
-            <a 
-              href={`${import.meta.env.VITE_API_URL || '/api/v1'}${lecture.fileUrl.replace('/api/v1', '')}`} 
-              target="_blank" 
-              rel="noreferrer"
+            <button type="button" onClick={downloadFile}
               className="flex items-center gap-2 px-4 py-2 bg-[var(--accent-1)] text-white text-sm font-semibold rounded-lg hover:opacity-90 transition-opacity"
             >
               <Download size={16} /> Скачать
-            </a>
+            </button>
           </div>
         )}
       </div>
 
-      <div className="flex gap-4">
+      <div className="flex flex-wrap gap-4">
         <button onClick={explainLecture} disabled={aiLoading} className="btn-primary flex-1 flex items-center justify-center gap-2 py-3">
           <Bot size={20} /> Объяснить ИИ
         </button>
         <button onClick={generateTest} disabled={aiLoading} className="btn-secondary flex-1 flex items-center justify-center gap-2 py-3">
-          <FileText size={20} /> Сгенерировать тест
+          <FileText size={20} /> {generatedTest ? 'Открыть тест' : 'Сгенерировать тест'}
         </button>
       </div>
+
+      {lecture.fileUrl && <button onClick={extractText} disabled={aiLoading} className="btn-secondary flex items-center gap-2 py-3"><FileText size={20} /> Извлечь текст из файла</button>}
+      {error && <p role="alert" className="glass-card p-4" style={{ color: 'var(--error)' }}>{error}</p>}
+      {extractedText && <section className="glass-card p-8"><h3 className="text-lg font-bold mb-4">Текст вложения</h3><div className="whitespace-pre-wrap">{extractedText}</div></section>}
 
       {aiLoading && (
         <div className="glass-card p-6 flex flex-col items-center justify-center text-center animate-pulse">

@@ -53,6 +53,7 @@ class FeynmanService:
         # Store in DB as AIInteraction
         await prisma.aiinteraction.create(
             data={
+                "id": session_id,
                 "userId": user_id,
                 "type": "FEYNMAN_SESSION",
                 "prompt": topic,
@@ -67,26 +68,26 @@ class FeynmanService:
     async def get_session(self, user_id: str, session_id: str) -> Dict[str, Any]:
         """Retrieve a Feynman session by ID."""
 
-        records = await prisma.aiinteraction.find_many(
-            where={"userId": user_id, "type": "FEYNMAN_SESSION"},
-            order={"createdAt": "desc"},
-            take=50,
-        )
+        record = await self._find_record(user_id, session_id)
+        try:
+            return json.loads(record.response)
+        except (ValueError, TypeError):
+            raise HTTPException(422, "Данные сессии повреждены")
 
-        for record in records:
-            try:
-                data = json.loads(record.response)
-                if data.get("id") == session_id:
-                    return data
-            except (json.JSONDecodeError, TypeError):
-                continue
-
-        raise HTTPException(status_code=404, detail="Session not found")
+    async def _find_record(self, user_id, session_id):
+        record = await prisma.aiinteraction.find_first(where={
+            "userId": user_id, "type": "FEYNMAN_SESSION",
+            "OR": [{"id": session_id}, {"response": {"contains": f'"id": "{session_id}"'}}],
+        })
+        if not record:
+            raise HTTPException(404, "Session not found")
+        return record
 
     async def send_explanation(self, user_id: str, session_id: str, explanation: str) -> Dict[str, Any]:
         """User sends an explanation, AI responds with a follow-up question."""
 
         session = await self.get_session(user_id, session_id)
+        expected = json.dumps(session, ensure_ascii=False)
         if session["status"] != "active":
             raise HTTPException(status_code=400, detail="Session is already completed")
 
@@ -98,7 +99,7 @@ class FeynmanService:
         msg_count = session.get("messageCount", 0)
 
         # Increase difficulty every 4 exchanges
-        if msg_count > 0 and msg_count % 4 == 0 and difficulty < 5:
+        if msg_count > 1 and (msg_count - 1) % 8 == 0 and difficulty < 5:
             difficulty += 1
 
         difficulty_instruction = ""
@@ -121,7 +122,7 @@ class FeynmanService:
         session["difficulty"] = difficulty
 
         # Update in DB
-        await self._update_session(user_id, session_id, session)
+        await self._update_session(user_id, session_id, session, expected)
 
         return session
 
@@ -129,6 +130,7 @@ class FeynmanService:
         """Complete a Feynman session and generate assessment."""
 
         session = await self.get_session(user_id, session_id)
+        expected = json.dumps(session, ensure_ascii=False)
         if session["status"] == "completed" and session.get("assessment"):
             return session
 
@@ -154,32 +156,18 @@ Evaluate the user's understanding based on their explanations."""
         session["status"] = "completed"
         session["assessment"] = assessment
 
-        await self._update_session(user_id, session_id, session)
+        await self._update_session(user_id, session_id, session, expected)
 
         return session
 
-    async def _update_session(self, user_id: str, session_id: str, session_data: Dict[str, Any]):
-        """Update session data in the DB."""
-
-        records = await prisma.aiinteraction.find_many(
-            where={"userId": user_id, "type": "FEYNMAN_SESSION"},
-            order={"createdAt": "desc"},
-            take=50,
+    async def _update_session(self, user_id, session_id, session_data, expected):
+        record = await self._find_record(user_id, session_id)
+        count = await prisma.aiinteraction.update_many(
+            where={"id": record.id, "response": expected},
+            data={"response": json.dumps(session_data, ensure_ascii=False)},
         )
-
-        for record in records:
-            try:
-                data = json.loads(record.response)
-                if data.get("id") == session_id:
-                    await prisma.aiinteraction.update(
-                        where={"id": record.id},
-                        data={"response": json.dumps(session_data, ensure_ascii=False)},
-                    )
-                    return
-            except (json.JSONDecodeError, TypeError):
-                continue
-
-        raise HTTPException(status_code=404, detail="Session not found for update")
+        if not count:
+            raise HTTPException(409, "Сессия изменена в другой вкладке. Обновите страницу.")
 
 
 feynman_service = FeynmanService()

@@ -75,6 +75,7 @@ class AttemptsService:
         show_answers = attempt.status == "COMPLETED"
 
         att_dict = attempt.model_dump()
+        att_dict["savedProgress"] = parse_db_json(att_dict.get("savedProgress"))
         if att_dict.get("test") and att_dict["test"].get("questions"):
             for q in att_dict["test"]["questions"]:
                 q["options"] = parse_db_json(q.get("options")) if q.get("options") else []
@@ -151,7 +152,7 @@ class AttemptsService:
             "startedAt": attempt.startedAt.isoformat() if attempt.startedAt else None,
             "completedAt": attempt.completedAt.isoformat() if attempt.completedAt else None,
             "answers": enriched_answers,
-            "aiAnalysis": attempt.aiAnalysis
+            "aiAnalysis": parse_db_json(attempt.aiAnalysis)
         }
 
 attempts_service = AttemptsService()

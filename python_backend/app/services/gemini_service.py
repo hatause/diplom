@@ -67,7 +67,7 @@ class GeminiService:
                 for block in content:
                     if block['type'] == 'text':
                         parts.append({'text': block['text']})
-                    elif block['type'] == 'image':
+                    elif block['type'] in ('image', 'document'):
                         parts.append({'inlineData': {'mimeType': block['mimeType'], 'data': block['data']}})
                     else:
                         raise ApiError(400, 'Недопустимый тип вложения.')
@@ -85,12 +85,14 @@ class GeminiService:
         return await self.chat(system_prompt, [{'role': 'user', 'content': user_prompt}], max_output_tokens)
 
     async def generate_json(self, system_prompt: str, user_prompt: str, max_output_tokens: int = 4096,
-                            response_model: type[BaseModel] | None = None) -> Any:
+                            response_model: type[BaseModel] | None = None,
+                            input_blocks: list[dict] | None = None) -> Any:
         if response_model:
             system_prompt += '\nReturn only JSON conforming to this schema: ' + json.dumps(response_model.model_json_schema(), ensure_ascii=False)
         else:
             system_prompt += '\nReturn only a JSON object matching the requested structure.'
-        text = await self._generate(system_prompt, [{'role': 'user', 'parts': [{'text': user_prompt}]}],
+        contents = self._contents([{'role': 'user', 'content': [{'type': 'text', 'text': user_prompt}, *(input_blocks or [])]}])
+        text = await self._generate(system_prompt, contents,
                                     max_output_tokens, json_mode=True,
                                     response_schema=response_model.model_json_schema() if response_model else None)
         try:
@@ -154,15 +156,21 @@ class GeminiService:
                 raise ApiError.service_unavailable('Gemini отклонил запрос. Проверьте ключ API и доступ к модели на сервере.')
             if status == 404:
                 raise ApiError.service_unavailable('Модель Gemini недоступна. Проверьте GEMINI_MODEL на сервере.')
-            raise ApiError(429 if status == 429 else 503, 'AI временно недоступен. Попробуйте позже.')
+            if status == 429:
+                raise ApiError(429, 'Достигнут лимит запросов Gemini. Подождите немного и повторите. Если ошибка сохраняется, проверьте квоту API.')
+            raise ApiError(503, 'AI временно недоступен. Попробуйте позже.')
         raise ApiError.service_unavailable()
 
     @staticmethod
     def _response_text(payload: dict) -> str:
+        if payload.get('promptFeedback', {}).get('blockReason'):
+            raise ApiError(422, 'AI-провайдер отклонил содержимое запроса или вложения. Используйте другой учебный материал.')
         candidates = payload.get('candidates') or []
         if not candidates:
             raise ValueError('No answer')
         candidate = candidates[0]
+        if candidate.get('finishReason') in ('SAFETY', 'PROHIBITED_CONTENT', 'BLOCKLIST', 'RECITATION', 'SPII', 'IMAGE_SAFETY'):
+            raise ApiError(422, 'AI-провайдер не разрешил обработку этого материала. Используйте другой учебный материал.')
         if candidate.get('finishReason') != 'STOP':
             raise ValueError('Incomplete or blocked answer')
         text = ''.join(part.get('text', '') for part in candidate.get('content', {}).get('parts', []) if not part.get('thought'))

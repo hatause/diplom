@@ -1,7 +1,9 @@
 import { useEffect, useState, useRef } from 'react';
 import { api } from '@/api/client';
+import { errorText } from '@/api/companion';
+import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth.store';
-import { Send, User, MessageSquare, Loader2, Search } from 'lucide-react';
+import { Send, MessageSquare, Loader2, Search } from 'lucide-react';
 
 export function MessagesPage() {
   const { user } = useAuthStore();
@@ -9,6 +11,9 @@ export function MessagesPage() {
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [inputText, setInputText] = useState('');
+  const [sending, setSending] = useState(false);
+  const selectedId = useRef<string | null>(null);
+  const searchId = useRef(0);
   const [loadingContacts, setLoadingContacts] = useState(true);
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -21,7 +26,7 @@ export function MessagesPage() {
 
   useEffect(() => {
     fetchContacts();
-    return () => clearInterval(pollInterval.current);
+    return () => { clearInterval(pollInterval.current); clearTimeout(searchTimeoutRef.current); };
   }, []);
 
   useEffect(() => {
@@ -42,7 +47,7 @@ export function MessagesPage() {
       const res = await api.get('/messages/contacts');
       setContacts(res.data.data);
     } catch (e) {
-      console.error('Failed to fetch contacts');
+      toast.error(errorText(e));
     }
     setLoadingContacts(false);
   };
@@ -51,14 +56,20 @@ export function MessagesPage() {
     if (!selectedUser) return;
     try {
       const res = await api.get(`/messages/${selectedUser.id}`);
-      setMessages(res.data.data);
+      if (selectedId.current === selectedUser.id) setMessages(prev => {
+        const byId = new Map(prev.map(m => [m.id, m]));
+        for (const message of res.data.data) byId.set(message.id, message);
+        return [...byId.values()].sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+      });
     } catch (e) {
-      console.error('Failed to fetch messages');
+      toast.error(errorText(e), { id: 'messages-load' });
     }
   };
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
+    const requestId = ++searchId.current;
+    clearTimeout(searchTimeoutRef.current);
     if (!query.trim()) {
       setSearchResults([]);
       setIsSearching(false);
@@ -69,14 +80,18 @@ export function MessagesPage() {
     searchTimeoutRef.current = setTimeout(async () => {
       try {
         const res = await api.get(`/messages/search?q=${encodeURIComponent(query.trim())}`);
-        setSearchResults(res.data.data || []);
+        if (requestId === searchId.current) setSearchResults(res.data.data || []);
       } catch (e) {
-        console.error('Search failed', e);
+        if (requestId === searchId.current) toast.error(errorText(e));
       }
     }, 500);
   };
 
   const selectContact = (contact: any) => {
+    selectedId.current = contact.id;
+    searchId.current++;
+    clearTimeout(searchTimeoutRef.current);
+    setMessages([]);
     setSelectedUser(contact);
     setSearchQuery('');
     setIsSearching(false);
@@ -87,7 +102,8 @@ export function MessagesPage() {
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputText.trim() || !selectedUser) return;
+    if (!inputText.trim() || !selectedUser || sending) return;
+    setSending(true);
     const content = inputText;
     setInputText('');
     
@@ -96,12 +112,12 @@ export function MessagesPage() {
         receiverId: selectedUser.id,
         content
       });
-      setMessages([...messages, res.data.data]);
+      if (selectedId.current === selectedUser.id) setMessages(prev => prev.some(m => m.id === res.data.data.id) ? prev : [...prev, res.data.data]);
       scrollToBottom();
     } catch (e) {
-      console.error('Failed to send message');
-      setInputText(content); // restore on fail
-    }
+      toast.error(errorText(e));
+      if (selectedId.current === selectedUser.id) setInputText(content); // restore on fail
+    } finally { setSending(false); }
   };
 
   const scrollToBottom = () => {
@@ -203,7 +219,7 @@ export function MessagesPage() {
                 />
                 <button 
                   type="submit" 
-                  disabled={!inputText.trim()}
+                  disabled={!inputText.trim() || sending}
                   className="bg-accent text-white w-12 h-12 rounded-xl flex items-center justify-center disabled:opacity-50 hover:opacity-90 transition-opacity"
                 >
                   <Send size={18} />

@@ -108,9 +108,11 @@ export function errorText(error: unknown): string {
   if (axios.isAxiosError(error)) {
     const data = error.response?.data;
     if (typeof data?.detail === "string") return data.detail;
+    if (error.response && error.response.status >= 500)
+      return "Сервер временно недоступен. Попробуйте позже.";
     if (typeof data?.error === "string") return data.error;
     if (Array.isArray(data?.detail))
-      return "Проверьте заполненные поля и размер файла.";
+      return data.detail.map((item: { msg?: string }) => item.msg || "Проверьте заполненные поля.").join("; ");
     if (error.code === "ECONNABORTED")
       return "Время ожидания истекло. Обновите список перед повторной попыткой.";
     if (!error.response)

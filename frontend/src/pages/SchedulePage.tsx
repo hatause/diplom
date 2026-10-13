@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { errorText } from '@/api/companion';
+import { ErrorNotice } from '@/components/CompanionUI';
 import { api } from '@/api/client';
 import { motion } from 'framer-motion';
 import { Calendar, Clock, MapPin, User, Wifi, WifiOff, RefreshCw } from 'lucide-react';
@@ -6,7 +8,6 @@ import { useAuthStore } from '@/store/auth.store';
 import { ScheduleManager } from '@/components/ScheduleManager';
 
 const DAYS = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
-const DAYS_SHORT = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 
 export function SchedulePage() {
   const isAdmin = useAuthStore(state => state.user?.role === 'ADMIN');
@@ -14,13 +15,17 @@ export function SchedulePage() {
 }
 
 function ScheduleView() {
+  const user = useAuthStore(state => state.user);
+  const hasGroup = user?.role !== 'STUDENT' || Boolean(user.studentProfile?.group);
   const [view, setView] = useState<'today' | 'week'>('week');
   const [data, setData] = useState<any>(null);
   const [status, setStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const load = async () => {
     setLoading(true);
+    setError('');
     try {
       const endpoint = view === 'today' ? '/schedule/today' : '/schedule/week';
       const [schedRes, statusRes] = await Promise.all([
@@ -29,7 +34,7 @@ function ScheduleView() {
       ]);
       setData(schedRes.data.data);
       setStatus(statusRes.data.data);
-    } catch {} finally { setLoading(false); }
+    } catch (e) { setError(errorText(e)); } finally { setLoading(false); }
   };
 
   useEffect(() => { load(); }, [view]);
@@ -75,9 +80,9 @@ function ScheduleView() {
         </div>
       </div>
 
-      {loading ? (
+      {!hasGroup ? <div className="glass-card p-8">Группа пока не назначена. Обратитесь к преподавателю или администратору, чтобы увидеть своё расписание.</div> : loading ? (
         <div className="space-y-3">{[...Array(5)].map((_, i) => <div key={i} className="skeleton h-20 rounded-2xl" />)}</div>
-      ) : view === 'today' ? (
+      ) : error ? <ErrorNotice message={error} retry={load} /> : view === 'today' ? (
         <div className="space-y-3">
           {(data?.items || []).length === 0 ? (
             <div className="glass-card p-12 text-center">

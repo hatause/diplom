@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuthStore } from '@/store/auth.store';
 import { api } from '@/api/client';
+import { errorText } from '@/api/companion';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { User, Mail, Shield, Edit2, Save, Key } from 'lucide-react';
@@ -19,7 +20,7 @@ export function ProfilePage() {
       setUser({ ...user!, ...res.data.data });
       setEditing(false);
       toast.success('Профиль обновлён');
-    } catch { toast.error('Ошибка'); }
+    } catch (err) { toast.error(errorText(err)); }
     finally { setSaving(false); }
   };
 
@@ -30,7 +31,7 @@ export function ProfilePage() {
       await api.put('/auth/password', pwForm);
       setPwForm({ currentPassword: '', newPassword: '' });
       toast.success('Пароль изменён');
-    } catch (err: any) { toast.error(err.response?.data?.error || 'Ошибка'); }
+    } catch (err: any) { toast.error(errorText(err)); }
   };
 
   const inputStyle = { background: 'var(--bg-input)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' };

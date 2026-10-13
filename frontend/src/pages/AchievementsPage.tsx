@@ -1,17 +1,22 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/api/client';
+import { errorText } from '@/api/companion';
+import { ErrorNotice } from '@/components/CompanionUI';
 import { motion } from 'framer-motion';
 import { Trophy, Lock, Sparkles, Flame, Star } from 'lucide-react';
 
 export function AchievementsPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    api.get('/achievements').then(res => { setData(res.data.data); setLoading(false); }).catch(() => setLoading(false));
+    api.get('/achievements').then(res => { setData(res.data.data); setLoading(false); }).catch((err) => { setError(errorText(err)); setLoading(false); });
   }, []);
 
   if (loading) return <div className="space-y-4">{[...Array(4)].map((_, i) => <div key={i} className="skeleton h-32 rounded-2xl" />)}</div>;
+
+  if (error) return <ErrorNotice message={error} retry={() => window.location.reload()} />;
 
   return (
     <div className="space-y-6">

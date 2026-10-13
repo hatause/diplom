@@ -56,11 +56,29 @@ class GeminiTests(unittest.IsolatedAsyncioTestCase):
         result = await self.service.generate_json('Tutor', '2+2', response_model=Result)
         self.assertEqual(result.answer, 'four')
 
+    async def test_pdf_is_passed_to_structured_generation(self):
+        def handler(request):
+            body = json.loads(request.content)
+            self.assertEqual(body['contents'][0]['parts'][1],
+                             {'inlineData': {'mimeType': 'application/pdf', 'data': 'YWJj'}})
+            return response('{"answer":"document answer"}')
+        self.transport(handler)
+        result = await self.service.generate_json('Tutor', 'Use the attached lecture', response_model=Result,
+            input_blocks=[{'type': 'document', 'mimeType': 'application/pdf', 'data': 'YWJj'}])
+        self.assertEqual(result.answer, 'document answer')
+
     async def test_invalid_schema_rejected(self):
         self.transport(lambda request: response('{"wrong":"field"}'))
         with self.assertRaises(ApiError) as cm:
             await self.service.generate_json('Tutor', '2+2', response_model=Result)
         self.assertEqual(cm.exception.status_code, 502)
+
+    async def test_blocked_attachment_is_not_reported_as_server_failure(self):
+        self.transport(lambda request: httpx.Response(200, json={'promptFeedback': {'blockReason': 'OTHER'}}))
+        with self.assertRaises(ApiError) as caught:
+            await self.service.generate_text('Tutor', 'Explain attachment')
+        self.assertEqual(caught.exception.status_code, 422)
+        self.assertIn('отклонил', caught.exception.detail)
 
     async def test_truncation_not_saved_as_valid_json(self):
         self.transport(lambda request: response('{"answer":"four"}', 'MAX_TOKENS'))
@@ -89,6 +107,14 @@ class GeminiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(calls), 1)
         self.assertNotIn('provider-private-error', str(cm.exception.detail))
         self.assertNotIn('test-secret', str(cm.exception.detail))
+
+    async def test_provider_quota_is_reported_explicitly(self):
+        self.transport(lambda request: httpx.Response(429))
+        with patch('app.services.gemini_service.asyncio.sleep', new_callable=unittest.mock.AsyncMock):
+            with self.assertRaises(ApiError) as caught:
+                await self.service.generate_text('Tutor', 'Hello')
+        self.assertEqual(caught.exception.status_code, 429)
+        self.assertIn('лимит', caught.exception.detail)
 
     async def test_timeout_releases_slot(self):
         def handler(request):

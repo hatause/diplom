@@ -62,6 +62,7 @@ class DebateService:
 
         await prisma.aiinteraction.create(
             data={
+                "id": session_id,
                 "userId": user_id,
                 "type": "DEBATE_SESSION",
                 "prompt": f"{topic} | Position: {user_position}",
@@ -76,26 +77,26 @@ class DebateService:
     async def get_session(self, user_id: str, session_id: str) -> Dict[str, Any]:
         """Retrieve a debate session by ID."""
 
-        records = await prisma.aiinteraction.find_many(
-            where={"userId": user_id, "type": "DEBATE_SESSION"},
-            order={"createdAt": "desc"},
-            take=50,
-        )
+        record = await self._find_record(user_id, session_id)
+        try:
+            return json.loads(record.response)
+        except (ValueError, TypeError):
+            raise HTTPException(422, "Данные сессии повреждены")
 
-        for record in records:
-            try:
-                data = json.loads(record.response)
-                if data.get("id") == session_id:
-                    return data
-            except (json.JSONDecodeError, TypeError):
-                continue
-
-        raise HTTPException(status_code=404, detail="Session not found")
+    async def _find_record(self, user_id, session_id):
+        record = await prisma.aiinteraction.find_first(where={
+            "userId": user_id, "type": "DEBATE_SESSION",
+            "OR": [{"id": session_id}, {"response": {"contains": f'"id": "{session_id}"'}}],
+        })
+        if not record:
+            raise HTTPException(404, "Session not found")
+        return record
 
     async def send_argument(self, user_id: str, session_id: str, argument: str) -> Dict[str, Any]:
         """User sends an argument, AI responds with counterargument."""
 
         session = await self.get_session(user_id, session_id)
+        expected = json.dumps(session, ensure_ascii=False)
         if session["status"] != "active":
             raise HTTPException(status_code=400, detail="Debate session is already completed")
 
@@ -126,7 +127,7 @@ class DebateService:
         session["conversationHistory"] = history
         session["roundNumber"] = round_number + 1
 
-        await self._update_session(user_id, session_id, session)
+        await self._update_session(user_id, session_id, session, expected)
 
         return session
 
@@ -134,6 +135,7 @@ class DebateService:
         """Complete a debate session and generate assessment."""
 
         session = await self.get_session(user_id, session_id)
+        expected = json.dumps(session, ensure_ascii=False)
         if session["status"] == "completed" and session.get("assessment"):
             return session
 
@@ -161,32 +163,18 @@ Evaluate the user's argumentation skills based on this debate."""
         session["status"] = "completed"
         session["assessment"] = assessment
 
-        await self._update_session(user_id, session_id, session)
+        await self._update_session(user_id, session_id, session, expected)
 
         return session
 
-    async def _update_session(self, user_id: str, session_id: str, session_data: Dict[str, Any]):
-        """Update session data in the DB."""
-
-        records = await prisma.aiinteraction.find_many(
-            where={"userId": user_id, "type": "DEBATE_SESSION"},
-            order={"createdAt": "desc"},
-            take=50,
+    async def _update_session(self, user_id, session_id, session_data, expected):
+        record = await self._find_record(user_id, session_id)
+        count = await prisma.aiinteraction.update_many(
+            where={"id": record.id, "response": expected},
+            data={"response": json.dumps(session_data, ensure_ascii=False)},
         )
-
-        for record in records:
-            try:
-                data = json.loads(record.response)
-                if data.get("id") == session_id:
-                    await prisma.aiinteraction.update(
-                        where={"id": record.id},
-                        data={"response": json.dumps(session_data, ensure_ascii=False)},
-                    )
-                    return
-            except (json.JSONDecodeError, TypeError):
-                continue
-
-        raise HTTPException(status_code=404, detail="Session not found for update")
+        if not count:
+            raise HTTPException(409, "Сессия изменена в другой вкладке. Обновите страницу.")
 
 
 debate_service = DebateService()

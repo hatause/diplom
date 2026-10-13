@@ -14,6 +14,7 @@ import {
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 import axios from "axios";
+import { api } from "@/api/client";
 import {
   Context,
   defaultContext,
@@ -78,6 +79,7 @@ export function AITutorPage({ mode = "tutor" }: { mode?: Mode }) {
   const file = useRef<HTMLInputElement>(null);
   const requestVersion = useRef(0);
   const id = params.get("conversation");
+  const attemptId = params.get("attemptId");
   const topic = params.get("topic") || "";
   const loadHistory = () =>
     getCompanion<Conversation[]>("conversations")
@@ -98,6 +100,22 @@ export function AITutorPage({ mode = "tutor" }: { mode?: Mode }) {
     if (!id) {
       setLoading(false);
       setContext((previous) => ({ ...previous, topic }));
+      if (attemptId) {
+        setLoading(true);
+        api.get(`/attempts/${attemptId}/result`, { signal: controller.signal })
+          .then(({ data }) => {
+            if (controller.signal.aborted) return;
+            const result = data.data;
+            setContext(previous => ({ ...previous, subject: (result.test?.subject?.name || '').slice(0, 120), topic: (result.test?.topic || '').slice(0, 200) }));
+            const mistakes = (result.answers || []).filter((answer: { isCorrect: boolean }) => !answer.isCorrect);
+            const details = mistakes.map((answer: { question: string; userAnswer: unknown; correctAnswer: unknown }) =>
+              `Вопрос: ${answer.question}\nМой ответ: ${JSON.stringify(answer.userAnswer)}\nПравильный ответ: ${JSON.stringify(answer.correctAnswer)}`
+            ).join('\n\n');
+            setInput(`Помоги разобрать результат теста «${result.test?.title || ''}»: ${result.percentage}%. Объясни ошибки и задай вопросы для закрепления.\n\n${details || 'Ошибок нет. Помоги закрепить тему.'}`.slice(0, 16000));
+          })
+          .catch(e => { if (!controller.signal.aborted) setError(errorText(e)); })
+          .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+      }
     } else {
       setLoading(true);
       getCompanion<Conversation>(`conversations/${id}`, controller.signal)
@@ -114,7 +132,7 @@ export function AITutorPage({ mode = "tutor" }: { mode?: Mode }) {
       });
     }
     return () => { controller.abort(); requestVersion.current += 1; };
-  }, [id, topic]);
+  }, [id, topic, attemptId]);
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: "auto", block: "nearest" });
   }, [conversation, busy]);

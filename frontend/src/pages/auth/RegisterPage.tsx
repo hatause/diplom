@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
+import { errorText } from '@/api/companion';
 import { useAuthStore } from '@/store/auth.store';
 import { UserPlus, Mail, Lock, User, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -18,8 +19,8 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await register(form);
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Ошибка регистрации');
+    } catch (err: unknown) {
+      setError(errorText(err));
     } finally {
       setLoading(false);
     }

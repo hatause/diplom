@@ -7,6 +7,8 @@ RULES:
 - Provide detailed explanations for each answer
 - Questions must be diverse — avoid repetitive patterns
 - For multiple choice: provide exactly 4 options
+- Copy the exact option text into correctAnswer for choice questions, never its letter or index. Use one string for single_choice and a nonempty array of distinct option texts for multiple_choice.
+- Set each question's topic to its actual subtopic, especially when generating a mixed test.
 - For true/false: the answer must be "true" or "false"
 - For short answer: the correct answer must be concise (1-3 words)
 - Generate questions in the same language as the subject name (if Russian subject → Russian questions)

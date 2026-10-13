@@ -11,13 +11,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
 
-from app.db.database import connect_db, disconnect_db
+from app.db.database import connect_db, disconnect_db, prisma
 from app.core.config import settings, UPLOAD_DIR
 from app.services.gemini_service import gemini_service
 from app.routers import companion
 from app.routers import tests, auth, admin, subjects, attempts, analytics, lectures, schedule, groups, teacher, messages, review, upload, achievements, ai, feynman, debate, classroom
 from app.services.classroom_search import classroom_search_service
-from fastapi.staticfiles import StaticFiles
+import asyncio
 
 logging.basicConfig(level=logging.INFO)
 
@@ -54,6 +54,31 @@ async def shutdown_event():
     await classroom_search_service.aclose()
     await disconnect_db()
 
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from prisma.errors import UniqueViolationError, ForeignKeyViolationError, RecordNotFoundError
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_error(request, exc):
+    return JSONResponse(status_code=exc.status_code, headers=exc.headers,
+                        content={"success": False, "error": exc.detail, "detail": exc.detail})
+
+
+@app.exception_handler(UniqueViolationError)
+async def duplicate_record(request, exc):
+    return JSONResponse(status_code=409, content={"success": False, "error": "Запись с такими данными уже существует"})
+
+
+@app.exception_handler(ForeignKeyViolationError)
+async def invalid_reference(request, exc):
+    return JSONResponse(status_code=409, content={"success": False, "error": "Связанная запись отсутствует или используется другими данными. Обновите страницу."})
+
+
+@app.exception_handler(RecordNotFoundError)
+async def missing_record(request, exc):
+    return JSONResponse(status_code=404, content={"success": False, "error": "Запись не найдена или уже удалена"})
+
+
 # Global exception handler to mimic ApiError format
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -84,10 +109,14 @@ app.include_router(classroom.router, prefix="/api/v1")
 app.include_router(companion.router, prefix="/api/v1")
 
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-app.mount("/api/v1/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+app.include_router(upload.files_router, prefix="/api/v1")
 
 @app.get("/health")
-def health_check():
+async def health_check():
+    try:
+        await asyncio.wait_for(prisma.query_raw('SELECT 1 AS ready'), timeout=2)
+    except Exception:
+        return JSONResponse(status_code=503, content={"status": "unavailable"})
     return {"status": "ok"}
 
 

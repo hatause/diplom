@@ -2,7 +2,7 @@ import { Outlet, NavLink, Link, useLocation, useNavigate } from 'react-router-do
 import { useEffect, useState, useRef } from 'react';
 import { useAuthStore } from '@/store/auth.store';
 import { useThemeStore } from '@/store/theme.store';
-import { LayoutDashboard, BookOpen, Calendar, History, BarChart3, Brain, Trophy, RefreshCcw, MessageSquare, LogOut, Sun, Moon, Menu, X, GraduationCap, Shield, Sparkles, Users, FileText, DoorOpen, Layers, PenLine, NotebookPen, ArrowUpRight, Lightbulb } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Calendar, History, BarChart3, Brain, Trophy, RefreshCcw, MessageSquare, LogOut, Sun, Moon, Menu, X, GraduationCap, Shield, Sparkles, Users, FileText, DoorOpen, Layers, NotebookPen, ArrowUpRight, Lightbulb } from 'lucide-react';
 const sections = [
   {title: 'ТВОЙ ДЕНЬ', links: [ ['/dashboard', LayoutDashboard, 'Обзор'], ['/schedule', Calendar, 'Расписание'], ['/classroom', DoorOpen, 'Найти кабинет'], ['/planner', NotebookPen, 'Задания и тесты'] ]},
   {title: 'УЧИСЬ С AI', links: [ ['/ai-tutor', Sparkles, 'AI Tutor'], ['/study', BookOpen, 'Подготовка к тесту'], ['/flashcards', Layers, 'Карточки'], ['/quiz', Brain, 'Викторина'], ['/term', Lightbulb, 'Объяснить термин'], ['/notes', FileText, 'Заметки'], ['/progress', BarChart3, 'Мой прогресс'] ]},

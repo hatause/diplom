@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
+import { errorText } from '@/api/companion';
 import { useAuthStore } from '@/store/auth.store';
 import { LogIn, Mail, Lock, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -17,14 +18,8 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email.trim().toLowerCase(), password);
-    } catch (err: any) {
-      const msg =
-        err.response?.data?.detail ||
-        err.response?.data?.error ||
-        (err.code === 'ERR_NETWORK' ? 'Сервер недоступен (ошибка сети)' : '') ||
-        err.message ||
-        'Неверный email или пароль';
-      setError(typeof msg === 'string' ? msg : 'Неверный email или пароль');
+    } catch (err: unknown) {
+      setError(errorText(err));
     } finally {
       setLoading(false);
     }

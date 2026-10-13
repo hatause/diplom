@@ -1,4 +1,5 @@
 import logging
+from fastapi import HTTPException
 from typing import List, Optional
 from app.db.database import prisma
 from app.services.gemini_service import gemini_service
@@ -8,14 +9,14 @@ from app.schemas.tests import GeneratedTest, GenerateTestRequest, Difficulty, Qu
 logger = logging.getLogger(__name__)
 
 class TestGenerationService:
-    async def generate(self, user_id: str, params: GenerateTestRequest, extra_context: Optional[str] = None) -> GeneratedTest:
+    async def generate(self, user_id: str, params: GenerateTestRequest, extra_context: Optional[str] = None, input_blocks: Optional[list] = None) -> GeneratedTest:
         # Get subject info
         subject = await prisma.subject.find_unique(
             where={"id": str(params.subjectId)},
             include={"topics": True}
         )
-        if not subject:
-            raise ValueError("Subject not found")
+        if not subject or not subject.isActive:
+            raise HTTPException(404, "Предмет не найден или отключён")
 
         # Build learning context
         context = await self._build_learning_context(user_id, str(params.subjectId), params.topic)
@@ -38,12 +39,14 @@ class TestGenerationService:
             system_prompt=TEST_GENERATOR_SYSTEM_PROMPT,
             user_prompt=user_prompt,
             response_model=GeneratedTest,
-            max_output_tokens=params.questionCount * 500 + 500
+            input_blocks=input_blocks,
+            max_output_tokens=params.questionCount * 500 + 2000
         )
         
-        # Pydantic (Instructor-like) validation inside generate_json already ensures correct schema.
-        # Fallback fix for missing IDs or difficulty can be added if we were using raw JSON,
-        # but Pydantic will complain if missing. We can post-process if needed.
+        if len(result.questions) != params.questionCount:
+            raise HTTPException(502, "ИИ вернул неверное количество вопросов. Повторите генерацию.")
+        if any(q.type not in params.questionTypes for q in result.questions):
+            raise HTTPException(502, "ИИ вернул неподходящий тип вопроса. Повторите генерацию.")
         
         # Ensure all questions have IDs
         for i, q in enumerate(result.questions):

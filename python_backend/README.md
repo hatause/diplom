@@ -2,6 +2,14 @@
 
 Единственный backend приложения — FastAPI + Prisma Python + PostgreSQL. React обращается к `/api/v1` через Vite proxy на порт 4000. Оба корневых Docker Compose собирают `python_backend/Dockerfile`; сервис `backend` — это Python. Старый Node.js-сервер удалён. Прямые зависимости закреплены на версиях из проверенного локального Python-окружения.
 
+Для локального API сначала запустите Docker Desktop и PostgreSQL проекта:
+
+```sh
+docker compose up -d postgres
+```
+
+Локальный `DATABASE_URL` в `.env` и `python_backend/.env` должен указывать на `postgresql://aitutor:aitutor_secret@localhost:5433/aitutor?schema=public`, как в `.env.example`. Порт 5432 может принадлежать базе другого проекта. В контейнере Compose самостоятельно задаёт адрес `postgres:5432`.
+
 Из корня проекта, после установки зависимостей и генерации Prisma-клиента:
 
 ```sh
@@ -10,6 +18,8 @@ python3 -m venv .venv
 .venv/bin/prisma generate --schema python_backend/schema.prisma
 .venv/bin/python -m uvicorn app.main:app --app-dir python_backend --host 127.0.0.1 --port 4000
 ```
+
+В другом терминале запустите сайт: `cd frontend && npm run dev`. Проверка API: `curl http://127.0.0.1:4000/health`. Если запущен только Vite, запросы `/api` могут возвращать 500 из-за недоступного API.
 
 Требуется существующая PostgreSQL с таблицами из `python_backend/schema.prisma`. Запуск сервера не удаляет, не заполняет и не меняет схему базы автоматически.
 
@@ -83,3 +93,10 @@ RUN_DB_TESTS=1 PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=python_backend .venv/bin/pyt
 ```
 
 Второй вариант требует подключённой тестовой БД. Создаёт временных пользователей и удаляет их данные в finally. AI в автотестах заменён контролируемыми ответами: тесты не тратят квоту Gemini и не включают камеры. Покрываются владение данными, refresh/auth, сохранение истории, карточки, результаты, параллельные ответы викторины и ошибки провайдера. OpenAPI: `/docs`; health: `/health`.
+
+
+## Прикреплённые лекции
+
+Объяснение и генерация теста используют текст лекции **и вложение**. PDF и изображения JPEG/PNG/WebP передаются в Gemini; из DOCX, PPTX, TXT/MD/CSV извлекается текст. PPTX определяется по содержимому, даже если файл назван `.ppt`. Старые бинарные PPT нужно предварительно сохранить как PPTX или PDF. Для презентаций, где важны рисунки или сканы, используйте PDF: из PPTX извлекаются текстовые блоки слайдов.
+
+Кнопка «Извлечь текст из файла» возвращает текст документа, а для PDF/изображений запускает распознавание через Gemini. Исходный файл и текст лекции не перезаписываются. Файлы ограничены 12 МБ, извлечённый текст — 120 000 символов; слишком большие, пустые, повреждённые или неподдерживаемые файлы дают понятную ошибку. Для проверки цепочки загрузки, объяснения и тестирования: `RUN_DB_TESTS=1 PYTHONPATH=python_backend .venv/bin/python -m unittest discover -s python_backend/tests -p test_lectures.py`.

@@ -15,6 +15,8 @@ from typing import Optional, List, Dict, Any
 
 from fastapi import HTTPException
 from app.db.database import prisma
+from prisma import Json
+from app.core.utils import parse_db_json
 from app.schemas.ai import AIChatRequest
 from app.services.gemini_service import gemini_service
 from app.services.prompts import (
@@ -104,6 +106,11 @@ class AIService:
         if not attempt or attempt.userId != user_id:
             raise HTTPException(status_code=404, detail="Attempt not found")
 
+        if attempt.status != "COMPLETED":
+            raise HTTPException(400, "Сначала завершите тест")
+        if attempt.aiAnalysis:
+            return {"analysis": parse_db_json(attempt.aiAnalysis)}
+
         wrong_answers = [a for a in (attempt.answers or []) if not a.isCorrect]
         correct_answers = [a for a in (attempt.answers or []) if a.isCorrect]
 
@@ -147,7 +154,7 @@ Correct answers by topic:
         # Save analysis to attempt
         await prisma.attempt.update(
             where={"id": attempt_id},
-            data={"aiAnalysis": analysis},
+            data={"aiAnalysis": Json(analysis)},
         )
 
         # Log AI interaction

@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     CAMERA_SERVICE_TOKEN: str = ""
     DATABASE_URL: str = os.getenv(
         "DATABASE_URL",
-        "postgresql://neostudy:neostudy_secret@localhost:5432/neostudy?schema=public",
+        "postgresql://aitutor:aitutor_secret@localhost:5433/aitutor?schema=public",
     )
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")

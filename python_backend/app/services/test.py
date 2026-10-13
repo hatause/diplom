@@ -1,9 +1,11 @@
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from fastapi import HTTPException
 from pydantic import BaseModel
 import json
 from app.core.utils import parse_db_json
+from app.core.config import settings
 
 from app.db.database import prisma
 from app.services.ai.test_generation import test_generation_service
@@ -16,56 +18,40 @@ class XP_VALUES:
     STREAK_BONUS = 25
 
 class TestService:
-    async def generate_test(self, user_id: str, params: GenerateTestRequest):
+    async def generate_test(self, user_id: str, params: GenerateTestRequest, extra_context: Optional[str] = None, input_blocks: Optional[list] = None):
         generated = await test_generation_service.generate(
             user_id=user_id,
-            params=params
+            params=params, extra_context=extra_context, input_blocks=input_blocks
         )
 
-        topic_name = params.topic or 'Общее'
-        
-        # Upsert topic
-        existing_topic = await prisma.topic.find_first(
-            where={"subjectId": str(params.subjectId), "name": topic_name}
-        )
-        if not existing_topic:
-            topic = await prisma.topic.create(  # type: ignore
-                data={"name": topic_name, "subjectId": str(params.subjectId)}
-            )
-        else:
-            topic = existing_topic
-            
-        topic_id = topic.id
-
-        # Store test and questions in DB
-        questions_data = []
-        for i, q in enumerate(generated.questions):
-            questions_data.append({
-                "type": q.type.value,
-                "question": q.question,
-                "options": json.dumps(q.options) if q.options else json.dumps([]),
-                "correctAnswer": json.dumps(q.correctAnswer),
-                "explanation": q.explanation,
-                "difficulty": q.difficulty.value,
-                "orderIndex": i,
-                "topicId": topic_id,
-            })
-
-        test = await prisma.test.create(  # type: ignore
-            data={
-                "title": generated.title,
-                "generatedBy": "gemini",
-                "subjectId": str(params.subjectId),
-                "topic": params.topic,
+        # Persist all questions and their real topics together. Mixed tests must not
+        # collapse every question into an artificial "General" topic.
+        async with prisma.tx() as db:
+            await db.query_raw('SELECT id FROM "Subject" WHERE id = $1 FOR UPDATE', str(params.subjectId))
+            topics = {}
+            questions_data = []
+            for i, q in enumerate(generated.questions):
+                topic_name = params.topic or q.topic or 'Общее'
+                if topic_name not in topics:
+                    topic = await db.topic.find_first(where={"subjectId": str(params.subjectId), "name": topic_name})
+                    if not topic:
+                        topic = await db.topic.create(data={"name": topic_name, "subjectId": str(params.subjectId)})
+                    topics[topic_name] = topic.id
+                questions_data.append({
+                    "type": q.type.value, "question": q.question,
+                    "options": json.dumps(q.options or []),
+                    "correctAnswer": json.dumps(q.correctAnswer),
+                    "explanation": q.explanation, "difficulty": q.difficulty.value,
+                    "orderIndex": i, "topicId": topics[topic_name],
+                })
+            test = await db.test.create(data={
+                "title": generated.title, "generatedBy": "gemini",
+                "subjectId": str(params.subjectId), "topic": params.topic,
                 "difficulty": params.difficulty.value,
                 "questionCount": len(generated.questions),
                 "questionTypes": [qt.value for qt in params.questionTypes],
-                "questions": {
-                    "create": questions_data
-                }
-            },
-            include={"questions": {"orderBy": {"orderIndex": "asc"}}}  # type: ignore
-        )
+                "questions": {"create": questions_data},
+            }, include={"questions": {"orderBy": {"orderIndex": "asc"}}})
 
         # Return test WITHOUT correct answers (security)
         questions_safe = []
@@ -135,30 +121,36 @@ class TestService:
         if not test:
             raise HTTPException(status_code=404, detail="Test not found")
 
-        existing = await prisma.attempt.find_first(  # type: ignore
-            where={"userId": user_id, "testId": test_id, "status": "IN_PROGRESS"}
-        )
-        if existing:
-            return existing
-
-        return await prisma.attempt.create(  # type: ignore
-            data={"userId": user_id, "testId": test_id}
-        )
+        async with prisma.tx() as db:
+            await db.query_raw('SELECT id FROM "User" WHERE id = $1 FOR UPDATE', user_id)
+            existing = await db.attempt.find_first(
+                where={"userId": user_id, "testId": test_id, "status": "IN_PROGRESS"}
+            )
+            if existing:
+                return existing
+            return await db.attempt.create(data={"userId": user_id, "testId": test_id})
 
     async def save_progress(self, attempt_id: str, user_id: str, progress: Any):
-        attempt = await prisma.attempt.find_unique(where={"id": attempt_id})
-        if not attempt or attempt.userId != user_id:
-            raise HTTPException(status_code=404, detail="Attempt not found")
-        if attempt.status != "IN_PROGRESS":
-            raise HTTPException(status_code=400, detail="Attempt already completed")
-
-        return await prisma.attempt.update(  # type: ignore
-            where={"id": attempt_id},
-            data={"savedProgress": json.dumps(progress)}
-        )
+        async with prisma.tx() as db:
+            await db.query_raw('SELECT id FROM "User" WHERE id = $1 FOR UPDATE', user_id)
+            attempt = await db.attempt.find_unique(where={"id": attempt_id})
+            if not attempt or attempt.userId != user_id:
+                raise HTTPException(status_code=404, detail="Attempt not found")
+            if attempt.status != "IN_PROGRESS":
+                raise HTTPException(status_code=400, detail="Attempt already completed")
+            return await db.attempt.update(
+                where={"id": attempt_id}, data={"savedProgress": json.dumps(progress)}
+            )
 
     async def submit_attempt(self, attempt_id: str, user_id: str, payload: SubmitTestRequest):
-        attempt = await prisma.attempt.find_unique(
+        async with prisma.tx(timeout=15000) as db:
+            # Serialize submissions for the same student, including different tests:
+            # topic progress, streaks and XP must be updated together with answers.
+            await db.query_raw('SELECT id FROM "User" WHERE id = $1 FOR UPDATE', user_id)
+            return await self._submit_attempt(db, attempt_id, user_id, payload)
+
+    async def _submit_attempt(self, db, attempt_id: str, user_id: str, payload: SubmitTestRequest):
+        attempt = await db.attempt.find_unique(
             where={"id": attempt_id},
             include={
                 "test": {
@@ -172,8 +164,8 @@ class TestService:
 
         if not attempt or attempt.userId != user_id:
             raise HTTPException(status_code=404, detail="Attempt not found")
-        if attempt.status == "COMPLETED":
-            raise HTTPException(status_code=400, detail="Attempt already submitted")
+        if attempt.status != "IN_PROGRESS":
+            raise HTTPException(status_code=400, detail="Попытка уже завершена или отменена")
 
         correct_count = 0
         wrong_count = 0
@@ -182,12 +174,14 @@ class TestService:
         answer_records = []
         
         questions = attempt.test.questions if attempt.test and attempt.test.questions else []
-        for ans in payload.answers:
-            question = next((q for q in questions if q.id == str(ans.questionId)), None)
-            if not question:
-                continue
+        answers_by_id = {str(answer.questionId): answer for answer in payload.answers}
+        question_ids = {question.id for question in questions}
+        if set(answers_by_id) - question_ids:
+            raise HTTPException(400, "Ответ содержит вопрос, которого нет в этом тесте")
+        for question in questions:
+            ans = answers_by_id.get(question.id) or AnswerItem(questionId=question.id)
 
-            if ans.userAnswer is None or (isinstance(ans.userAnswer, list) and len(ans.userAnswer) == 0) or ans.userAnswer == "":
+            if ans.userAnswer is None or (isinstance(ans.userAnswer, list) and len(ans.userAnswer) == 0) or (isinstance(ans.userAnswer, str) and not ans.userAnswer.strip()):
                 skipped_count += 1
                 answer_records.append({
                     "attemptId": attempt_id,
@@ -215,11 +209,11 @@ class TestService:
 
         # Insert answers
         for ans_record in answer_records:
-            existing_ans = await prisma.answer.find_first(
+            existing_ans = await db.answer.find_first(
                 where={"attemptId": ans_record["attemptId"], "questionId": ans_record["questionId"]}
             )
             if existing_ans:
-                await prisma.answer.update(
+                await db.answer.update(
                     where={"id": existing_ans.id},
                     data={
                         "userAnswer": ans_record["userAnswer"],
@@ -228,13 +222,13 @@ class TestService:
                     }
                 )
             else:
-                await prisma.answer.create(data=ans_record)
+                await db.answer.create(data=ans_record)
 
         total_questions = len(questions)
         percentage = (correct_count / total_questions) * 100 if total_questions > 0 else 0
         percentage = round(percentage * 100) / 100
 
-        updated_attempt = await prisma.attempt.update(  # type: ignore
+        updated_attempt = await db.attempt.update(  # type: ignore
             where={"id": attempt_id},
             data={
                 "status": "COMPLETED",
@@ -252,8 +246,8 @@ class TestService:
             }
         )
 
-        await self._update_progress(user_id, attempt.test, answer_records)
-        await self._update_gamification(user_id, correct_count, percentage)
+        await self._update_progress(user_id, attempt.test, answer_records, db=db)
+        await self._update_gamification(user_id, correct_count, percentage, db=db)
 
         # Record study session
         if attempt.test and attempt.test.subject:
@@ -261,7 +255,7 @@ class TestService:
             if percentage == 100:
                 xp_earned += XP_VALUES.PERFECT_SCORE
                 
-            await prisma.studysession.create(  # type: ignore
+            await db.studysession.create(  # type: ignore
                 data={
                     "userId": user_id,
                     "subjectName": attempt.test.subject.name,
@@ -272,6 +266,8 @@ class TestService:
                 }
             )
 
+        from app.services.achievements import achievements_service
+        await achievements_service.award(db, user_id)
         return updated_attempt
 
     def _check_answer(self, user_answer: Any, correct_answer: Any) -> bool:
@@ -288,7 +284,7 @@ class TestService:
         
         return all(u == c for u, c in zip(user_norm, correct_norm))
 
-    async def _update_progress(self, user_id: str, test: Any, answers: List[Dict[str, Any]]):
+    async def _update_progress(self, user_id: str, test: Any, answers: List[Dict[str, Any]], db):
         topic_results = {}
 
         for ans in answers:
@@ -308,7 +304,7 @@ class TestService:
             if topic_id == 'general':
                 continue # Only track real topics
                 
-            existing = await prisma.topicprogress.find_first(
+            existing = await db.topicprogress.find_first(
                 where={"userId": user_id, "topicId": topic_id}
             )
 
@@ -332,7 +328,7 @@ class TestService:
             next_review_at = datetime.now(timezone.utc) + timedelta(days=review_interval)
 
             if existing:
-                await prisma.topicprogress.update(  # type: ignore
+                await db.topicprogress.update(  # type: ignore
                     where={"id": existing.id},
                     data={
                         "masteryScore": float(mastery_score),
@@ -347,7 +343,7 @@ class TestService:
                     }
                 )
             else:
-                await prisma.topicprogress.create(  # type: ignore
+                await db.topicprogress.create(  # type: ignore
                     data={
                         "userId": user_id,
                         "topicId": topic_id,
@@ -371,8 +367,8 @@ class TestService:
         if score >= 30: return 'DEVELOPING'
         return 'BEGINNER'
 
-    async def _update_gamification(self, user_id: str, correct_count: int, percentage: float):
-        profile = await prisma.studentprofile.find_unique(where={"userId": user_id})
+    async def _update_gamification(self, user_id: str, correct_count: int, percentage: float, db):
+        profile = await db.studentprofile.find_unique(where={"userId": user_id})
         if not profile:
             return
 
@@ -380,8 +376,10 @@ class TestService:
         if percentage == 100:
             xp_earned += XP_VALUES.PERFECT_SCORE
 
-        today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-        last_study = profile.lastStudyDate.replace(hour=0, minute=0, second=0, microsecond=0) if profile.lastStudyDate else None
+        now = datetime.now(timezone.utc)
+        school_zone = ZoneInfo(settings.SCHOOL_TIMEZONE)
+        today = now.astimezone(school_zone).date()
+        last_study = profile.lastStudyDate.astimezone(school_zone).date() if profile.lastStudyDate else None
 
         new_streak = profile.streak
         if not last_study or last_study < today - timedelta(days=1):
@@ -390,13 +388,13 @@ class TestService:
             new_streak = profile.streak + 1
             xp_earned += XP_VALUES.STREAK_BONUS
 
-        await prisma.studentprofile.update(
+        await db.studentprofile.update(
             where={"userId": user_id},
             data={
                 "xp": profile.xp + xp_earned,
                 "streak": new_streak,
                 "bestStreak": max(new_streak, profile.bestStreak),
-                "lastStudyDate": datetime.now(timezone.utc)
+                "lastStudyDate": now
             }
         )
 

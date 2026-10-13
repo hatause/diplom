@@ -84,7 +84,7 @@ class ScheduleService:
 
     async def get_schedule(self, group_code: str = None):
         where_clause = {"isActive": True}
-        if group_code:
+        if group_code is not None:
             where_clause["group"] = {"is": {"code": group_code}} # type: ignore
 
         items = await prisma.scheduleitem.find_many(
@@ -109,7 +109,7 @@ class ScheduleService:
         week_type = "odd" if now.isocalendar().week % 2 else "even"
         where_clause = {"isActive": True, "dayOfWeek": js_today,
                         "OR": [{"weekType": None}, {"weekType": week_type}]}
-        if group_code:
+        if group_code is not None:
             where_clause["group"] = {"is": {"code": group_code}} # type: ignore
 
         items = await prisma.scheduleitem.find_many(
@@ -129,7 +129,7 @@ class ScheduleService:
 
     async def get_week(self, group_code: str = None):
         where_clause = {"isActive": True}
-        if group_code:
+        if group_code is not None:
             where_clause["group"] = {"is": {"code": group_code}} # type: ignore
 
         items = await prisma.scheduleitem.find_many(

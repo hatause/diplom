@@ -17,6 +17,8 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     token = credentials.credentials
     try:
         payload = jwt.decode(token, settings.JWT_SECRET, algorithms=["HS256"])
+        if payload.get("tokenType") != "access":
+            raise HTTPException(401, "Access token required", headers={"WWW-Authenticate": "Bearer"})
         user_id: str = payload.get("userId") or payload.get("id")
         role: str = payload.get("role") or "STUDENT"
         if user_id is None:

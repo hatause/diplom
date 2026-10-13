@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '@/api/client';
+import { errorText } from '@/api/companion';
+import { ErrorNotice } from '@/components/CompanionUI';
 import { motion } from 'framer-motion';
 import { CheckCircle, XCircle, MinusCircle, Clock, Brain, ArrowRight, Loader2, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
@@ -11,6 +13,7 @@ export function TestResultPage() {
   const [analysis, setAnalysis] = useState<any>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!attemptId) return;
@@ -18,24 +21,26 @@ export function TestResultPage() {
       setResult(res.data.data);
       if (res.data.data.aiAnalysis) setAnalysis(res.data.data.aiAnalysis);
       setLoading(false);
-    }).catch(() => setLoading(false));
+    }).catch((err) => { setError(errorText(err)); setLoading(false); });
   }, [attemptId]);
 
   const handleAnalyze = async () => {
     setAnalyzing(true);
     try {
       const res = await api.post('/ai/analyze-result', { attemptId });
-      setAnalysis(res.data.data);
+      setAnalysis(res.data.data.analysis);
       toast.success('AI анализ готов!');
-    } catch { toast.error('Ошибка AI анализа'); }
+    } catch (err) { toast.error(errorText(err)); }
     finally { setAnalyzing(false); }
   };
 
   if (loading) return <div className="flex justify-center py-20"><div className="w-8 h-8 border-4 rounded-full animate-spin" style={{ borderColor: 'var(--border-subtle)', borderTopColor: 'var(--accent-1)' }} /></div>;
+  if (error) return <ErrorNotice message={error} retry={() => window.location.reload()} />;
   if (!result) return <div className="text-center py-20" style={{ color: 'var(--text-tertiary)' }}>Результат не найден</div>;
 
   const scoreColor = (result.percentage || 0) >= 80 ? '#10B981' : (result.percentage || 0) >= 50 ? '#F59E0B' : '#EF4444';
   const formatTime = (s: number) => s >= 60 ? `${Math.floor(s / 60)}м ${s % 60}с` : `${s}с`;
+
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -138,7 +143,7 @@ export function TestResultPage() {
         <Link to="/test/generate" className="px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 text-white" style={{ background: 'var(--accent-gradient)' }}>
           Новый тест <ArrowRight size={16} />
         </Link>
-        <Link to="/ai-tutor" className="px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2" style={{ background: 'var(--bg-input)', color: 'var(--text-secondary)' }}>
+        <Link to={`/ai-tutor?attemptId=${attemptId}`} className="px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2" style={{ background: 'var(--bg-input)', color: 'var(--text-secondary)' }}>
           <MessageSquare size={16} /> Разобрать ошибки с AI
         </Link>
         <Link to="/history" className="px-4 py-2.5 rounded-xl text-sm font-medium" style={{ background: 'var(--bg-input)', color: 'var(--text-secondary)' }}>

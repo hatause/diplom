@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/api/client';
+import { errorText } from '@/api/companion';
+import { ErrorNotice } from '@/components/CompanionUI';
 import { motion } from 'framer-motion';
 import { BarChart3, TrendingUp } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 
 const COLORS = ['#10B981', '#6366F1', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
@@ -10,6 +12,7 @@ export function AnalyticsPage() {
   const [data, setData] = useState<any>(null);
   const [subjectStats, setSubjectStats] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     Promise.all([
@@ -19,13 +22,15 @@ export function AnalyticsPage() {
       setData(analyticsRes.data.data);
       setSubjectStats(subjectsRes.data.data || []);
       setLoading(false);
-    }).catch(() => setLoading(false));
+    }).catch((err) => { setError(errorText(err)); setLoading(false); });
   }, []);
 
   if (loading) return <div className="space-y-4">{[...Array(4)].map((_, i) => <div key={i} className="skeleton h-64 rounded-2xl" />)}</div>;
   if (!data) return null;
 
   const tooltipStyle = { background: 'var(--bg-glass-strong)', border: '1px solid var(--border-glass)', borderRadius: '12px', fontSize: '12px' };
+
+  if (error) return <ErrorNotice message={error} retry={() => window.location.reload()} />;
 
   return (
     <div className="space-y-6">

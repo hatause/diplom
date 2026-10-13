@@ -1,18 +1,23 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '@/api/client';
+import { errorText } from '@/api/companion';
+import { ErrorNotice } from '@/components/CompanionUI';
 import { motion } from 'framer-motion';
 import { BookOpen, Brain, TrendingUp, AlertTriangle } from 'lucide-react';
 
 export function SubjectsPage() {
   const [subjects, setSubjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    api.get('/subjects').then(res => { setSubjects(res.data.data || []); setLoading(false); }).catch(() => setLoading(false));
+    api.get('/subjects').then(res => { setSubjects(res.data.data || []); setLoading(false); }).catch((err) => { setError(errorText(err)); setLoading(false); });
   }, []);
 
   if (loading) return <div className="space-y-4">{[...Array(4)].map((_, i) => <div key={i} className="skeleton h-32 rounded-2xl" />)}</div>;
+
+  if (error) return <ErrorNotice message={error} retry={() => window.location.reload()} />;
 
   return (
     <div className="space-y-6">

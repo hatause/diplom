@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/api/client';
+import { errorText } from '@/api/companion';
+import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { Shield, Users, BookOpen, BarChart3, FileText, GraduationCap, Plus, Calendar } from 'lucide-react';
 import { ScheduleManager } from '@/components/ScheduleManager';
@@ -30,11 +32,16 @@ export function AdminDashboardPage() {
         api.get('/admin/subjects'),
       ]);
       setStats(dashRes.data.data);
-      setUsersList(usersRes.data.data.users || []);
+      const allUsers = [...(usersRes.data.data.users || [])];
+      for (let page = 2; page <= usersRes.data.data.pagination.pages; page++) {
+        const next = await api.get(`/admin/users?limit=100&page=${page}`);
+        allUsers.push(...next.data.data.users);
+      }
+      setUsersList(allUsers);
       setGroupsList(groupsRes.data.data || []);
       setSubjectsList(subjRes.data.data || []);
     } catch (e) {
-      console.error(e);
+      toast.error(errorText(e));
     }
     setLoading(false);
   };
@@ -104,7 +111,7 @@ function DashboardTab({ stats, users }: { stats: any; users: any[] }) {
           { label: 'Предметов', value: stats?.subjectCount || 0, icon: BookOpen, color: '#8B5CF6' },
           { label: 'Тестов', value: stats?.testCount || 0, icon: FileText, color: '#EC4899' },
           { label: 'Попыток', value: stats?.attemptCount || 0, icon: BarChart3, color: '#14B8A6' },
-        ].map((stat, i) => (
+        ].map(stat => (
           <div key={stat.label} className="glass-card p-4">
             <stat.icon size={18} style={{ color: stat.color }} className="mb-2" />
             <p className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>{stat.value}</p>
@@ -155,7 +162,7 @@ function UsersTab({ users, groups, onRefresh }: { users: any[], groups: any[], o
       setForm({ firstName: '', lastName: '', email: '', password: '', role: 'STUDENT', groupId: '' });
       onRefresh();
     } catch (e) {
-      alert('Ошибка при создании');
+      toast.error(errorText(e));
     }
   };
 
@@ -167,7 +174,7 @@ function UsersTab({ users, groups, onRefresh }: { users: any[], groups: any[], o
           <input className="input-field w-full" placeholder="Имя" required value={form.firstName} onChange={e => setForm({...form, firstName: e.target.value})} />
           <input className="input-field w-full" placeholder="Фамилия" required value={form.lastName} onChange={e => setForm({...form, lastName: e.target.value})} />
           <input className="input-field w-full" type="email" placeholder="Email" required value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
-          <input className="input-field w-full" type="password" placeholder="Пароль" required value={form.password} onChange={e => setForm({...form, password: e.target.value})} />
+          <input className="input-field w-full" type="password" placeholder="Пароль (минимум 8 символов)" minLength={8} required value={form.password} onChange={e => setForm({...form, password: e.target.value})} />
           <select className="input-field w-full" value={form.role} onChange={e => setForm({...form, role: e.target.value})}>
             <option value="STUDENT">Студент</option>
             <option value="TEACHER">Преподаватель</option>
@@ -214,21 +221,25 @@ function UsersTab({ users, groups, onRefresh }: { users: any[], groups: any[], o
 function GroupsTab({ groups, users, onRefresh }: { groups: any[], users: any[], onRefresh: () => void }) {
   const [form, setForm] = useState({ name: '', code: '' });
   const [assignForm, setAssignForm] = useState({ groupId: '', teacherId: '' });
-  const teachers = users.filter(u => u.role === 'TEACHER');
+  const teachers = users.filter(u => u.role === 'TEACHER' && u.isActive);
 
   const createGroup = async (e: React.FormEvent) => {
     e.preventDefault();
+    try {
     await api.post('/admin/groups', form);
     setForm({ name: '', code: '' });
     onRefresh();
+    } catch (err) { toast.error(errorText(err)); }
   };
 
   const assignTeacher = async (e: React.FormEvent) => {
     e.preventDefault();
     if(!assignForm.groupId || !assignForm.teacherId) return;
+    try {
     await api.post(`/admin/groups/${assignForm.groupId}/teachers`, { teacherId: assignForm.teacherId });
     setAssignForm({ groupId: '', teacherId: '' });
     onRefresh();
+    } catch (err) { toast.error(errorText(err)); }
   };
 
   return (
@@ -276,13 +287,30 @@ function GroupsTab({ groups, users, onRefresh }: { groups: any[], users: any[], 
 
 function SubjectsTab({ subjects, users, onRefresh }: { subjects: any[], users: any[], onRefresh: () => void }) {
   const [form, setForm] = useState({ name: '', code: '', description: '', teacherId: '' });
-  const teachers = users.filter(u => u.role === 'TEACHER');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const teachers = users.filter(u => u.role === 'TEACHER' && u.isActive);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await api.post('/admin/subjects', form);
-    setForm({ name: '', code: '', description: '', teacherId: '' });
-    onRefresh();
+    if (saving) return;
+    setError('');
+    setSaving(true);
+    try {
+      await api.post('/admin/subjects', {
+        ...form,
+        name: form.name.trim(),
+        code: form.code.trim(),
+        teacherId: form.teacherId || null,
+      });
+      setForm({ name: '', code: '', description: '', teacherId: '' });
+      toast.success('Предмет создан');
+      onRefresh();
+    } catch (err) {
+      setError(errorText(err));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -290,6 +318,7 @@ function SubjectsTab({ subjects, users, onRefresh }: { subjects: any[], users: a
       <div className="md:col-span-1 glass-card p-6 h-fit">
         <h3 className="text-lg font-bold mb-4">Новый предмет</h3>
         <form onSubmit={submit} className="space-y-4">
+          {error && <p role="alert" style={{ color: 'var(--error)' }}>{error}</p>}
           <input className="input-field w-full" placeholder="Название" required value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
           <input className="input-field w-full" placeholder="Код (CS-101)" required value={form.code} onChange={e => setForm({...form, code: e.target.value})} />
           <textarea className="input-field w-full" placeholder="Описание" value={form.description} onChange={e => setForm({...form, description: e.target.value})} />
@@ -297,7 +326,7 @@ function SubjectsTab({ subjects, users, onRefresh }: { subjects: any[], users: a
             <option value="">Без преподавателя (Общий)</option>
             {teachers.map(t => <option key={t.id} value={t.id}>{t.firstName} {t.lastName}</option>)}
           </select>
-          <button className="btn-primary w-full">Создать</button>
+          <button type="submit" className="btn-primary w-full" disabled={saving}>{saving ? 'Создание…' : 'Создать'}</button>
         </form>
       </div>
       <div className="md:col-span-2 glass-card p-6">

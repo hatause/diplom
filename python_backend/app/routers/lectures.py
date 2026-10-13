@@ -13,12 +13,12 @@ async def get_public_lectures(current_user: TokenData = Depends(get_current_user
 
 @router.get("/group/{group_id}")
 async def get_group_lectures(group_id: str, current_user: TokenData = Depends(get_current_user)):
-    data = await lectures_service.get_group_lectures(group_id)
+    data = await lectures_service.get_group_lectures(group_id, current_user.userId)
     return {"success": True, "data": data}
 
 @router.get("/{lecture_id}")
 async def get_lecture(lecture_id: str, current_user: TokenData = Depends(get_current_user)):
-    data = await lectures_service.get_lecture(lecture_id)
+    data = await lectures_service.get_lecture(lecture_id, current_user.userId)
     return {"success": True, "data": data}
 
 @router.post("")
@@ -37,4 +37,10 @@ async def explain_lecture(lecture_id: str, current_user: TokenData = Depends(get
 @router.post("/{lecture_id}/generate-test")
 async def generate_test(lecture_id: str, current_user: TokenData = Depends(get_current_user)):
     data = await lectures_service.generate_test(lecture_id, current_user.userId)
+    return {"success": True, "data": data}
+
+
+@router.post("/{lecture_id}/extract-text")
+async def extract_text(lecture_id: str, current_user: TokenData = Depends(get_current_user)):
+    data = await lectures_service.extract_text(lecture_id, current_user.userId)
     return {"success": True, "data": data}

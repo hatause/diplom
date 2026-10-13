@@ -2,6 +2,9 @@ from app.db.database import prisma
 from app.schemas.admin import UserCreate, UserUpdate, GroupCreate, GroupTeacherAdd, SubjectCreate, TopicCreate
 from app.services.auth import hash_password
 from prisma.enums import Role
+from prisma import Json
+from prisma.errors import UniqueViolationError, ForeignKeyViolationError
+from fastapi import HTTPException
 from typing import Optional
 import math
 
@@ -48,7 +51,11 @@ class AdminService:
     async def create_user(self, data: UserCreate):
         password_hash = hash_password(data.password)
         
-        student_profile = None
+        if data.groupId and not await prisma.group.find_unique(where={"id": data.groupId}):
+            raise HTTPException(400, "Группа не найдена")
+        if await prisma.user.find_first(where={"email": {"equals": data.email, "mode": "insensitive"}}):
+            raise HTTPException(409, "Пользователь с таким email уже существует")
+        student_profile = {"create": {}} if data.role == Role.STUDENT else None
         if data.role == Role.STUDENT and data.groupId:
             student_profile = {
                 "create": {
@@ -66,7 +73,10 @@ class AdminService:
         if student_profile:
             user_data["studentProfile"] = student_profile
             
-        user = await prisma.user.create(data=user_data)
+        try:
+            user = await prisma.user.create(data=user_data)
+        except UniqueViolationError:
+            raise HTTPException(409, "Пользователь с таким email уже существует")
         safe_user = user.model_dump()
         safe_user.pop("passwordHash", None)
         return safe_user
@@ -79,38 +89,26 @@ class AdminService:
         if data.isActive is not None: update_data["isActive"] = data.isActive
         if data.password: update_data["passwordHash"] = hash_password(data.password)
 
-        user = await prisma.user.update(
-            where={"id": user_id},
-            data=update_data
-        )
-        
-        await prisma.auditlog.create(
-            data={
-                "userId": admin_id,
-                "action": "UPDATE_USER",
-                "entity": "User",
-                "entityId": user_id,
-                "details": {"changes": list(update_data.keys())}
-            }
-        )
-        
+        async with prisma.tx() as db:
+            await db.query_raw('SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext($1))', 'admin-role-changes')
+            current = await db.user.find_unique(where={"id": user_id})
+            if not current:
+                raise HTTPException(404, "Пользователь не найден")
+            removing_admin = current.role == Role.ADMIN and (data.role not in (None, Role.ADMIN) or data.isActive is False)
+            if removing_admin and (user_id == admin_id or await db.user.count(where={"role": Role.ADMIN, "isActive": True}) <= 1):
+                raise HTTPException(400, "Нельзя отключить свой аккаунт администратора или последнего администратора")
+            user = await db.user.update(where={"id": user_id}, data=update_data)
+            if user.role == Role.STUDENT:
+                await db.studentprofile.upsert(where={"userId": user_id}, data={"create": {"userId": user_id}, "update": {}})
+            if data.password or data.isActive is False or data.role is not None:
+                await db.refreshtoken.delete_many(where={"userId": user_id})
+            await db.auditlog.create(data={"userId": admin_id, "action": "UPDATE_USER", "entity": "User", "entityId": user_id, "details": Json({"changes": list(update_data.keys())})})
         safe_user = user.model_dump()
         safe_user.pop("passwordHash", None)
         return safe_user
 
     async def deactivate_user(self, admin_id: str, user_id: str):
-        await prisma.user.update(
-            where={"id": user_id},
-            data={"isActive": False}
-        )
-        await prisma.auditlog.create(
-            data={
-                "userId": admin_id,
-                "action": "DEACTIVATE_USER",
-                "entity": "User",
-                "entityId": user_id
-            }
-        )
+        await self.update_user(admin_id, user_id, UserUpdate(isActive=False))
         return {"success": True}
 
     async def get_groups(self):
@@ -131,6 +129,8 @@ class AdminService:
         return res
 
     async def create_group(self, data: GroupCreate):
+        if await prisma.group.find_unique(where={"code": data.code or data.name}):
+            raise HTTPException(409, "Группа с таким кодом уже существует")
         group = await prisma.group.create(
             data={
                 "name": data.name,
@@ -140,6 +140,11 @@ class AdminService:
         return group.model_dump()
 
     async def add_teacher_to_group(self, group_id: str, teacher_id: str):
+        if not await prisma.group.find_unique(where={"id": group_id}):
+            raise HTTPException(404, "Группа не найдена")
+        teacher = await prisma.user.find_unique(where={"id": teacher_id})
+        if not teacher or teacher.role != Role.TEACHER or not teacher.isActive:
+            raise HTTPException(400, "Выберите действующего преподавателя")
         group = await prisma.group.update(
             where={"id": group_id},
             data={
@@ -170,19 +175,23 @@ class AdminService:
         return res
 
     async def create_subject(self, data: SubjectCreate):
-        subject = await prisma.subject.create(
-            data={
-                "name": data.name,
-                "code": data.code,
-                "description": data.description,
-                "teacherId": data.teacherId,
-                "iconName": data.iconName,
-                "color": data.color
-            }
-        )
+        if data.teacherId:
+            teacher = await prisma.user.find_unique(where={"id": data.teacherId})
+            if not teacher or teacher.role != Role.TEACHER or not teacher.isActive:
+                raise HTTPException(400, "Выберите действующего преподавателя")
+        try:
+            subject = await prisma.subject.create(data=data.model_dump())
+        except UniqueViolationError:
+            raise HTTPException(409, "Предмет с таким кодом уже существует")
+        except ForeignKeyViolationError:
+            raise HTTPException(400, "Выбранный преподаватель больше не существует")
         return subject.model_dump()
 
     async def create_topic(self, subject_id: str, data: TopicCreate):
+        if not await prisma.subject.find_unique(where={"id": subject_id}):
+            raise HTTPException(404, "Предмет не найден")
+        if await prisma.topic.find_first(where={"subjectId": subject_id, "name": data.name}):
+            raise HTTPException(409, "Тема с таким названием уже существует")
         topic = await prisma.topic.create(
             data={
                 "name": data.name,

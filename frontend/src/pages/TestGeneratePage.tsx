@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '@/api/client';
+import { errorText } from '@/api/companion';
 import { motion } from 'framer-motion';
 import { Brain, Loader2, Sparkles, ChevronDown, Zap, CheckCircle2, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
@@ -27,12 +28,13 @@ export function TestGeneratePage() {
   const [subjects, setSubjects] = useState<any[]>([]);
   const [form, setForm] = useState({
     subjectId: preSelectedSubject,
-    topic: '',
+    topic: searchParams.get('topic') || '',
     difficulty: 'medium',
     questionCount: 10,
     questionTypes: ['single_choice'] as string[],
   });
   const [generating, setGenerating] = useState(false);
+  const [generatedTest, setGeneratedTest] = useState<any>(null);
   const [selectedSubject, setSelectedSubject] = useState<any>(null);
 
   useEffect(() => {
@@ -42,28 +44,29 @@ export function TestGeneratePage() {
       if (preSelectedSubject) {
         setSelectedSubject(subs.find((s: any) => s.id === preSelectedSubject));
       }
-    });
+    }).catch(e => toast.error(errorText(e)));
   }, []);
 
   useEffect(() => {
-    if (form.subjectId) {
-      setSelectedSubject(subjects.find(s => s.id === form.subjectId));
-    }
+    setSelectedSubject(subjects.find(s => s.id === form.subjectId) || null);
   }, [form.subjectId, subjects]);
 
+  useEffect(() => { setGeneratedTest(null); }, [form]);
+
   const handleGenerate = async () => {
+    if (generating) return;
     if (!form.subjectId) { toast.error('Выберите предмет'); return; }
     if (form.questionTypes.length === 0) { toast.error('Выберите хотя бы один тип вопросов'); return; }
     setGenerating(true);
     try {
-      const { data: testRes } = await api.post('/tests/generate', form);
-      const test = testRes.data;
+      const test = generatedTest || (await api.post('/tests/generate', form)).data.data;
+      setGeneratedTest(test);
       const { data: attemptRes } = await api.post(`/tests/${test.id}/start`);
       const attempt = attemptRes.data;
       toast.success('Тест сгенерирован!');
       navigate(`/test/${attempt.id}/play`, { state: { test } });
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Ошибка генерации теста. Попробуйте ещё раз.');
+      toast.error(errorText(err));
     } finally {
       setGenerating(false);
     }
@@ -252,13 +255,13 @@ export function TestGeneratePage() {
           {generating ? (
             <>
               <Loader2 size={20} className="animate-spin" />
-              <span>AI генерирует тест...</span>
+              <span>{generatedTest ? 'Открываем тест...' : 'AI генерирует тест...'}</span>
               <Zap size={16} className="animate-float" />
             </>
           ) : (
             <>
               <Sparkles size={20} />
-              Сгенерировать тест
+              {generatedTest ? 'Открыть готовый тест' : 'Сгенерировать тест'}
               <ArrowRight size={16} style={{ marginLeft: 4 }} />
             </>
           )}

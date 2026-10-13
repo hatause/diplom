@@ -4,6 +4,12 @@ from prisma.enums import Role
 from typing import Optional
 
 class TeacherService:
+    def _student_filter(self, user_id: str, is_admin: bool):
+        where = {"role": Role.STUDENT, "isActive": True}
+        if not is_admin:
+            where["studentProfile"] = {"is": {"group": {"is": {"teachers": {"some": {"id": user_id}}}}}}
+        return where
+
     async def get_dashboard(self, user_id: str, is_admin: bool):
         where_clause = {} if is_admin else {"teacherId": user_id}
         subjects = await prisma.subject.find_many(
@@ -12,16 +18,11 @@ class TeacherService:
         )
         subject_ids = [s.id for s in subjects]
 
-        if not subject_ids:
-            return {
-                "subjects": [],
-                "totalStudents": 0,
-                "avgScore": 0,
-                "recentAttempts": []
-            }
+        student_filter = self._student_filter(user_id, is_admin)
+        total_students = await prisma.user.count(where=student_filter)
 
         attempts = await prisma.attempt.find_many(
-            where={"test": {"is": {"subjectId": {"in": subject_ids}}}, "status": "COMPLETED"}, # type: ignore
+            where={"test": {"is": {"subjectId": {"in": subject_ids}}}, "status": "COMPLETED", "user": {"is": student_filter}}, # type: ignore
             include={
                 "user": True,
                 "test": {"include": {"subject": True}}
@@ -29,8 +30,6 @@ class TeacherService:
             order={"completedAt": "desc"}
         )
 
-        unique_student_ids = {a.userId for a in attempts}
-        total_students = len(unique_student_ids)
 
         avg_score = sum(a.percentage or 0 for a in attempts) / len(attempts) if attempts else 0
         recent_attempts = attempts[:20]
@@ -40,6 +39,8 @@ class TeacherService:
                 {
                     "id": s.id,
                     "name": s.name,
+                    "code": s.code,
+                    "description": s.description,
                     "testCount": len(s.tests) if s.tests else 0
                 } for s in subjects
             ],
@@ -58,7 +59,14 @@ class TeacherService:
         }
 
     async def get_students(self, user_id: str, is_admin: bool, subject_id: Optional[str] = None):
-        where_clause = {"status": "COMPLETED"}
+        student_filter = self._student_filter(user_id, is_admin)
+        if subject_id:
+            subject = await prisma.subject.find_unique(where={"id": subject_id})
+            if not subject:
+                raise HTTPException(404, "Предмет не найден")
+            if not is_admin and subject.teacherId != user_id:
+                raise HTTPException(403, "Нет доступа к этому предмету")
+        where_clause = {"status": "COMPLETED", "user": {"is": student_filter}}
         if not is_admin:
             where_clause["test"] = {"is": {"subject": {"is": {"teacherId": user_id}}}} # type: ignore
         
@@ -91,18 +99,22 @@ class TeacherService:
                 }
             student_data_map[sid]["attempts"].append(a)
             
+        for student in await prisma.user.find_many(where=student_filter, include={"studentProfile": {"include": {"group": True}}}):
+            student_data_map.setdefault(student.id, {"user": student, "attempts": []})
         res = []
         for sid, data in student_data_map.items():
             user = data["user"]
             s_attempts = data["attempts"]
             
-            avg_score = sum(at.percentage or 0 for at in s_attempts) / len(s_attempts)
+            avg_score = sum(at.percentage or 0 for at in s_attempts) / len(s_attempts) if s_attempts else 0
             
             # weak topics
             weak_topics_where = {"userId": sid, "masteryScore": {"lt": 60}}
             if not is_admin:
                 weak_topics_where["topic"] = {"is": {"subject": {"is": {"teacherId": user_id}}}} # type: ignore
                 
+            if subject_id:
+                weak_topics_where["topic"] = {"is": {"subjectId": subject_id}}
             weak_topics = await prisma.topicprogress.find_many(
                 where=weak_topics_where, # type: ignore
                 include={"topic": True},
@@ -125,7 +137,7 @@ class TeacherService:
             
         return res
 
-    async def get_student_detail(self, student_id: str):
+    async def get_student_detail(self, student_id: str, user_id: str, is_admin: bool):
         user = await prisma.user.find_unique(
             where={"id": student_id},
             include={
@@ -135,15 +147,26 @@ class TeacherService:
         if not user:
             raise HTTPException(status_code=404, detail="Student not found")
             
+        if user.role != Role.STUDENT:
+            raise HTTPException(404, "Student not found")
+        if not is_admin:
+            allowed = await prisma.user.find_first(where={"id": student_id, "studentProfile": {"is": {"group": {"is": {"teachers": {"some": {"id": user_id}}}}}}})
+            if not allowed:
+                raise HTTPException(403, "Нет доступа к этому студенту")
+        attempt_filter = {"userId": student_id, "status": "COMPLETED"}
+        progress_filter = {"userId": student_id}
+        if not is_admin:
+            attempt_filter["test"] = {"is": {"subject": {"is": {"teacherId": user_id}}}}
+            progress_filter["topic"] = {"is": {"subject": {"is": {"teacherId": user_id}}}}
         attempts = await prisma.attempt.find_many(
-            where={"userId": student_id, "status": "COMPLETED"},
+            where=attempt_filter,
             include={"test": {"include": {"subject": True}}},
             order={"completedAt": "desc"},
             take=20
         )
         
         progress = await prisma.topicprogress.find_many(
-            where={"userId": student_id},
+            where=progress_filter,
             include={"topic": {"include": {"subject": True}}}
         )
         

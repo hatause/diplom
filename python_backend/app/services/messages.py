@@ -1,4 +1,5 @@
 from app.db.database import prisma
+from fastapi import HTTPException
 from prisma.enums import Role
 from app.schemas.messages import SendMessageRequest
 
@@ -83,9 +84,17 @@ class MessagesService:
             data={"isRead": True}
         )
 
-        return [m.model_dump() for m in messages]
+        return [
+            {**m.model_dump(), "isRead": True if m.receiverId == my_id else m.isRead}
+            for m in messages
+        ]
 
     async def send_message(self, sender_id: str, data: SendMessageRequest):
+        if sender_id == data.receiverId:
+            raise HTTPException(400, "Нельзя отправить сообщение самому себе")
+        receiver = await prisma.user.find_unique(where={"id": data.receiverId})
+        if not receiver or not receiver.isActive:
+            raise HTTPException(404, "Получатель не найден или отключён")
         msg = await prisma.message.create(
             data={
                 "senderId": sender_id,
@@ -103,6 +112,7 @@ class MessagesService:
             where={
                 "AND": [
                     {"id": {"not": current_user_id}},
+                    {"isActive": True},
                     {"OR": [
                         {"firstName": {"contains": query, "mode": "insensitive"}},
                         {"lastName": {"contains": query, "mode": "insensitive"}},

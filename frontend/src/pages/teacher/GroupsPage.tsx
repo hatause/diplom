@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Users, Plus, Copy, Loader2, Search } from 'lucide-react';
 import { groupsApi, type Group, type StudentInGroup } from '@/api/groups';
 import { toast } from 'sonner';
+import { errorText } from '@/api/companion';
 import { useAuthStore } from '@/store/auth.store';
 
 export default function GroupsPage() {
@@ -11,6 +12,7 @@ export default function GroupsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [newGroup, setNewGroup] = useState({ name: '', code: '' });
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
+  const selectedGroupId = useRef<string | null>(null);
   const [students, setStudents] = useState<StudentInGroup[]>([]);
   const [studentsLoading, setStudentsLoading] = useState(false);
   const [unassignedStudents, setUnassignedStudents] = useState<any[]>([]);
@@ -59,21 +61,29 @@ export default function GroupsPage() {
   };
 
   const handleSelectGroup = async (group: Group) => {
+    selectedGroupId.current = group.id;
     setSelectedGroup(group);
+    setStudents([]);
+    setSelectedStudentId('');
     setStudentsLoading(true);
     try {
       const data = await groupsApi.getGroupStudents(group.id);
-      setStudents(data);
+      if (selectedGroupId.current === group.id) setStudents(data);
     } catch (err) {
-      toast.error('Ошибка загрузки студентов');
+      if (selectedGroupId.current === group.id) toast.error(errorText(err));
     } finally {
-      setStudentsLoading(false);
+      if (selectedGroupId.current === group.id) setStudentsLoading(false);
     }
   };
 
-  const copyCode = (code: string) => {
-    navigator.clipboard.writeText(code);
-    toast.success('Код скопирован');
+  const copyCode = async (code: string) => {
+    try {
+      if (!navigator.clipboard) throw new Error('Clipboard unavailable');
+      await navigator.clipboard.writeText(code);
+      toast.success('Код скопирован');
+    } catch {
+      toast.error('Не удалось скопировать автоматически. Выделите код и скопируйте его вручную.');
+    }
   };
 
   const handleDeleteGroup = async (e: React.MouseEvent, id: string) => {
@@ -81,8 +91,8 @@ export default function GroupsPage() {
     if (!confirm('Вы уверены, что хотите удалить эту группу? Это действие нельзя отменить.')) return;
     try {
       await groupsApi.deleteGroup(id);
-      setGroups(groups.filter(g => g.id !== id));
-      if (selectedGroup?.id === id) setSelectedGroup(null);
+      setGroups(previous => previous.filter(g => g.id !== id));
+      if (selectedGroupId.current === id) { selectedGroupId.current = null; setSelectedGroup(null); }
       toast.success('Группа удалена');
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Ошибка удаления группы');
@@ -91,16 +101,16 @@ export default function GroupsPage() {
 
   const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedStudentId || !selectedGroup) return;
+    if (!selectedStudentId || !selectedGroup || addingStudent) return;
     try {
       setAddingStudent(true);
       await groupsApi.addStudent(selectedGroup.id, selectedStudentId);
       toast.success('Студент добавлен');
-      setSelectedStudentId('');
-      await handleSelectGroup(selectedGroup);
+      if (selectedGroupId.current === selectedGroup.id) await handleSelectGroup(selectedGroup);
+      await fetchGroups();
       await fetchUnassignedStudents();
     } catch (err) {
-      toast.error('Ошибка добавления студента');
+      toast.error(errorText(err));
     } finally {
       setAddingStudent(false);
     }

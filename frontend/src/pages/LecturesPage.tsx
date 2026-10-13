@@ -55,7 +55,7 @@ export function LecturesPage() {
         {lectures.map((lec, i) => (
           <motion.div key={lec.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
             <div 
-              onClick={() => navigate(`/teacher/lectures/${lec.id}`)} // Reusing the same lecture view page
+              onClick={() => navigate(`/lectures/${lec.id}`)} // Reusing the same lecture view page
               className="glass-card p-6 cursor-pointer hover:border-accent transition-colors group"
             >
               <div className="flex items-start gap-4">

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { api } from '@/api/client';
+import { errorText } from '@/api/companion';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Clock, Flag, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -10,6 +11,7 @@ export function TestPlayerPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [test, setTest] = useState<any>(location.state?.test || null);
+  const [ready, setReady] = useState(false);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [timeSpent, setTimeSpent] = useState<Record<string, number>>({});
@@ -20,33 +22,58 @@ export function TestPlayerPage() {
 
   // Timer
   useEffect(() => {
+    if (!ready || submitting) return;
     const timer = setInterval(() => setElapsed(e => e + 1), 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [ready, submitting]);
 
-  // Load test if not passed via state
+  // Always restore the attempt, even when navigation supplies test metadata.
   useEffect(() => {
-    if (!test && attemptId) {
+    let cancelled = false;
+    setReady(false);
+    if (attemptId) {
       api.get(`/attempts/${attemptId}`).then(res => {
+        if (cancelled) return;
         const attempt = res.data.data;
-        setTest(attempt.test);
-        if (attempt.savedProgress) {
-          const saved = attempt.savedProgress as any;
-          if (saved.answers) setAnswers(saved.answers);
-          if (saved.currentIdx) setCurrentIdx(saved.currentIdx);
+        if (attempt.status === 'COMPLETED') {
+          navigate(`/test/${attemptId}/result`, { replace: true });
+          return;
         }
-      }).catch(() => navigate('/dashboard'));
+        setTest(attempt.test);
+        const saved = attempt.savedProgress;
+        setAnswers(saved?.answers || {});
+        setTimeSpent(saved?.timeSpent || {});
+        setElapsed(Math.max(0, saved?.elapsed || 0));
+        setCurrentIdx(Math.min(Math.max(0, saved?.currentIdx || 0), Math.max(0, attempt.test.questions.length - 1)));
+        questionStartRef.current = Date.now();
+        setReady(true);
+      }).catch((err) => {
+        if (cancelled) return;
+        toast.error(errorText(err));
+        navigate('/dashboard');
+      });
     }
-  }, [attemptId]);
+    return () => { cancelled = true; };
+  }, [attemptId, navigate]);
 
-  // Auto-save every 30s
+  const progressRef = useRef({ answers, currentIdx, elapsed, timeSpent, test });
+  progressRef.current = { answers, currentIdx, elapsed, timeSpent, test };
+
+  // Keep one interval; answering a question must not restart the save countdown.
   useEffect(() => {
-    if (!attemptId) return;
+    if (!attemptId || !ready || submitting) return;
     const interval = setInterval(() => {
-      api.put(`/tests/${attemptId}/progress`, { answers, currentIdx }).catch(() => {});
+      const snapshot = progressRef.current;
+      const times = { ...snapshot.timeSpent };
+      const questionId = snapshot.test?.questions?.[snapshot.currentIdx]?.id;
+      if (questionId) times[questionId] = (times[questionId] || 0) + Math.round((Date.now() - questionStartRef.current) / 1000);
+      api.put(`/tests/${attemptId}/progress`, {
+        answers: snapshot.answers, currentIdx: snapshot.currentIdx,
+        elapsed: snapshot.elapsed, timeSpent: times,
+      }).catch(() => toast.error('Не удалось сохранить прогресс. Проверьте соединение.', { id: 'test-autosave' }));
     }, 30000);
     return () => clearInterval(interval);
-  }, [answers, currentIdx, attemptId]);
+  }, [attemptId, ready, submitting]);
 
   // Track time per question
   useEffect(() => {
@@ -54,20 +81,28 @@ export function TestPlayerPage() {
   }, [currentIdx]);
 
   const recordQuestionTime = useCallback(() => {
+    const next = { ...timeSpent };
     const questionId = test?.questions?.[currentIdx]?.id;
     if (questionId) {
-      const spent = Math.round((Date.now() - questionStartRef.current) / 1000);
-      setTimeSpent(prev => ({ ...prev, [questionId]: (prev[questionId] || 0) + spent }));
+      const now = Date.now();
+      next[questionId] = (next[questionId] || 0) + Math.round((now - questionStartRef.current) / 1000);
+      questionStartRef.current = now;
+      setTimeSpent(next);
     }
-  }, [currentIdx, test]);
+    return next;
+  }, [currentIdx, test, timeSpent]);
 
-  if (!test) return <div className="flex justify-center py-20"><div className="w-8 h-8 border-4 rounded-full animate-spin" style={{ borderColor: 'var(--border-subtle)', borderTopColor: 'var(--accent-1)' }} /></div>;
+  if (!test || !ready) return <div className="flex justify-center py-20"><div className="w-8 h-8 border-4 rounded-full animate-spin" style={{ borderColor: 'var(--border-subtle)', borderTopColor: 'var(--accent-1)' }} /></div>;
 
   const questions = test.questions || [];
   const current = questions[currentIdx];
   const totalQuestions = questions.length;
-  const answeredCount = Object.keys(answers).filter(k => answers[k] !== null && answers[k] !== undefined).length;
-  const progress = (answeredCount / totalQuestions) * 100;
+  const answeredCount = questions.filter((q: any) => {
+    const value = answers[q.id];
+    return Array.isArray(value) ? value.length > 0 : typeof value === 'string' ? value.trim().length > 0 : value != null;
+  }).length;
+  const progress = totalQuestions ? (answeredCount / totalQuestions) * 100 : 0;
+  if (!current) return <p role="alert">В этом тесте нет вопросов.</p>;
 
   const formatTime = (s: number) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
 
@@ -79,19 +114,20 @@ export function TestPlayerPage() {
   const goPrev = () => { recordQuestionTime(); if (currentIdx > 0) setCurrentIdx(i => i - 1); };
 
   const handleSubmit = async () => {
-    recordQuestionTime();
+    if (submitting) return;
+    const finalTimes = recordQuestionTime();
     setSubmitting(true);
     try {
       const answerPayload = questions.map((q: any) => ({
         questionId: q.id,
         userAnswer: answers[q.id] ?? null,
-        timeSpent: timeSpent[q.id] || 0,
+        timeSpent: finalTimes[q.id] || 0,
       }));
       await api.post(`/tests/${attemptId}/submit`, { answers: answerPayload, totalTime: elapsed });
       toast.success('Тест завершён!');
       navigate(`/test/${attemptId}/result`);
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Ошибка отправки');
+      toast.error(errorText(err));
     } finally {
       setSubmitting(false);
       setShowConfirm(false);

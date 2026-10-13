@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '@/api/client';
+import { errorText } from '@/api/companion';
+import { ErrorNotice } from '@/components/CompanionUI';
 import { motion } from 'framer-motion';
 import { History, Clock, ChevronRight } from 'lucide-react';
 
@@ -8,6 +10,7 @@ export function HistoryPage() {
   const [attempts, setAttempts] = useState<any[]>([]);
   const [pagination, setPagination] = useState<any>({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [page, setPage] = useState(1);
 
   useEffect(() => {
@@ -16,10 +19,12 @@ export function HistoryPage() {
       setAttempts(res.data.data.attempts || []);
       setPagination(res.data.data.pagination || {});
       setLoading(false);
-    }).catch(() => setLoading(false));
+    }).catch((err) => { setError(errorText(err)); setLoading(false); });
   }, [page]);
 
   const formatTime = (s: number) => s >= 60 ? `${Math.floor(s / 60)}м` : `${s}с`;
+
+  if (error) return <ErrorNotice message={error} retry={() => window.location.reload()} />;
 
   return (
     <div className="space-y-6">

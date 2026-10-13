@@ -6,7 +6,7 @@ import { ProgressPage } from "@/pages/companion/ProgressPage";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import { useAuthStore } from "@/store/auth.store";
-import { useThemeStore } from "@/store/theme.store";
+import "@/store/theme.store";
 import { MainLayout } from "@/layouts/MainLayout";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import LoginPage from "@/pages/auth/LoginPage";
@@ -106,7 +106,6 @@ function LoadingScreen() {
 
 export default function App() {
   const { fetchMe, isLoading } = useAuthStore();
-  const { theme } = useThemeStore();
 
   useEffect(() => {
     fetchMe();
@@ -146,6 +145,7 @@ export default function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/subjects" element={<SubjectsPage />} />
             <Route path="/lectures" element={<LecturesPage />} />
+            <Route path="/lectures/:id" element={<LecturePage />} />
             <Route path="/messages" element={<MessagesPage />} />
             <Route path="/schedule" element={<SchedulePage />} />
             <Route path="/classroom" element={<ClassroomSearchPage />} />
@@ -199,9 +199,7 @@ export default function App() {
             <Route
               path="/teacher/lectures/:id"
               element={
-                <ProtectedRoute roles={["TEACHER", "ADMIN"]}>
-                  <LecturePage />
-                </ProtectedRoute>
+                <LecturePage />
               }
             />
             <Route

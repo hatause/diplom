@@ -23,8 +23,8 @@ async def get_students(
     return {"success": True, "data": data}
 
 @router.get("/students/{id}")
-async def get_student_detail(id: str = Path(...)):
-    data = await teacher_service.get_student_detail(id)
+async def get_student_detail(id: str = Path(...), current_user: TokenData = Depends(get_current_user)):
+    data = await teacher_service.get_student_detail(id, current_user.userId, current_user.role == Role.ADMIN)
     return {"success": True, "data": data}
 
 @router.get("/groups")
@@ -37,6 +37,7 @@ async def create_teacher_subject(
     payload: SubjectCreate = Body(...),
     current_user: TokenData = Depends(get_current_user)
 ):
-    payload.teacherId = current_user.userId
+    if current_user.role == Role.TEACHER:
+        payload.teacherId = current_user.userId
     data = await admin_service.create_subject(payload)
     return {"success": True, "data": data}

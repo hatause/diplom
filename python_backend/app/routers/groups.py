@@ -35,9 +35,10 @@ async def get_unassigned_students():
 @router.post("/{id}/students", dependencies=[Depends(require_roles([Role.TEACHER, Role.ADMIN]))])
 async def assign_student(
     id: str = Path(...),
-    payload: StudentAssign = Body(...)
+    payload: StudentAssign = Body(...),
+    current_user: TokenData = Depends(get_current_user)
 ):
-    data = await groups_service.assign_student(id, payload)
+    data = await groups_service.assign_student(id, payload, current_user.userId, current_user.role)
     return {"success": True, "data": data}
 
 @router.delete("/{id}", dependencies=[Depends(require_roles([Role.ADMIN]))])

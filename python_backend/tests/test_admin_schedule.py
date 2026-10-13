@@ -157,3 +157,15 @@ class AdminScheduleTests(unittest.IsolatedAsyncioTestCase):
                 clock.now.return_value = datetime.fromisoformat(date).replace(tzinfo=ZoneInfo("Asia/Almaty"))
                 result = await schedule_service.get_today(self.groups[0].code)
             self.assertEqual({item["id"] for item in result["items"]}, {every["id"], expected["id"]})
+
+    async def test_student_defaults_to_own_group_and_unassigned_is_empty(self):
+        own = await self.create()
+        await self.create(groupId=self.groups[1].id)
+        headers = self.headers["STUDENT"]
+        empty = await self.client.get("/api/v1/schedule", headers=headers)
+        self.assertEqual(empty.json()["data"]["items"], [])
+        await prisma.studentprofile.create(data={"userId": self.users["STUDENT"].id, "groupId": self.groups[0].id})
+        assigned = await self.client.get("/api/v1/schedule", headers=headers)
+        self.assertEqual([item["id"] for item in assigned.json()["data"]["items"]], [own["id"]])
+        week = await self.client.get("/api/v1/schedule/week", headers=headers)
+        self.assertEqual([item["id"] for item in week.json()["data"]["week"]["1"]], [own["id"]])

@@ -2,6 +2,7 @@ from fastapi import HTTPException
 from app.db.database import prisma
 from app.schemas.groups import GroupCreate, StudentAssign
 from prisma.enums import Role
+from app.services.access import require_group_access
 
 class GroupsService:
     async def get_my_groups(self, user_id: str, is_admin: bool):
@@ -97,6 +98,7 @@ class GroupsService:
         students = await prisma.user.find_many(
             where={
                 "role": Role.STUDENT,
+                "isActive": True,
                 "OR": [
                     {"studentProfile": {"is": None}}, # type: ignore
                     {"studentProfile": {"is": {"groupId": None}}} # type: ignore
@@ -113,38 +115,31 @@ class GroupsService:
             } for s in students
         ]
 
-    async def assign_student(self, group_id: str, data: StudentAssign):
-        if not data.studentId:
-            raise HTTPException(status_code=400, detail="studentId is required")
-            
-        group = await prisma.group.find_unique(where={"id": group_id})
-        if not group:
-            raise HTTPException(status_code=404, detail="Group not found")
-            
-        existing_profile = await prisma.studentprofile.find_unique(where={"userId": data.studentId})
-        if existing_profile:
-            profile = await prisma.studentprofile.update(
-                where={"userId": data.studentId},
-                data={"groupId": group_id}
-            )
-        else:
-            profile = await prisma.studentprofile.create(
-                data={
-                    "userId": data.studentId,
-                    "groupId": group_id
-                }
-            )
-            
-        return profile.model_dump()
+    async def assign_student(self, group_id: str, data: StudentAssign, user_id: str, role: Role):
+        await require_group_access(group_id, user_id, role)
+        async with prisma.tx() as db:
+            await db.query_raw('SELECT id FROM "User" WHERE id = $1 FOR UPDATE', data.studentId)
+            student = await db.user.find_unique(where={"id": data.studentId})
+            if not student or student.role != Role.STUDENT or not student.isActive:
+                raise HTTPException(400, "Выберите действующего студента")
+            existing = await db.studentprofile.find_unique(where={"userId": data.studentId})
+            if existing and existing.groupId not in (None, group_id) and role != Role.ADMIN:
+                raise HTTPException(409, "Студент уже состоит в другой группе; перенос доступен администратору")
+            profile = await db.studentprofile.upsert(where={"userId": data.studentId}, data={
+                "create": {"userId": data.studentId, "groupId": group_id},
+                "update": {"groupId": group_id},
+            })
+            return profile.model_dump()
 
     async def delete_group(self, group_id: str):
-        # Detach students
-        await prisma.studentprofile.update_many(
-            where={"groupId": group_id},
-            data={"groupId": None}
-        )
-        
-        await prisma.group.delete(where={"id": group_id})
+        async with prisma.tx() as db:
+            await db.query_raw('SELECT id FROM "Group" WHERE id = $1 FOR UPDATE', group_id)
+            if not await db.group.find_unique(where={"id": group_id}):
+                raise HTTPException(404, "Группа не найдена")
+            if await db.lecture.count(where={"groupId": group_id}) or await db.scheduleitem.count(where={"groupId": group_id}):
+                raise HTTPException(409, "У группы есть лекции или расписание. Сначала перенесите или удалите связанные материалы.")
+            await db.studentprofile.update_many(where={"groupId": group_id}, data={"groupId": None})
+            await db.group.delete(where={"id": group_id})
         return {"success": True}
 
 groups_service = GroupsService()

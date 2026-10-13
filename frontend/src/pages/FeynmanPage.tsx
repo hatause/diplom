@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { errorText } from '@/api/companion';
 import { api } from '@/api/client';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Sparkles, Send, Loader2, Bot, User, Play, CheckCircle2, ChevronRight, XCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
@@ -20,6 +22,8 @@ interface Session {
 }
 
 export function FeynmanPage() {
+  const [params, setParams] = useSearchParams();
+  const sessionId = params.get('session');
   const [session, setSession] = useState<Session | null>(null);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -29,14 +33,26 @@ export function FeynmanPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    api.get('/subjects').then(res => setSubjects(res.data.data || [])).catch(() => {});
+    api.get('/subjects').then(res => setSubjects(res.data.data || [])).catch(e => toast.error(errorText(e)));
   }, []);
+
+  useEffect(() => {
+    if (!sessionId) { setSession(null); return; }
+    let cancelled = false;
+    setLoading(true);
+    api.get(`/feynman/sessions/${sessionId}`)
+      .then(res => { if (!cancelled) setSession(res.data.data); })
+      .catch(e => { if (!cancelled) toast.error(errorText(e)); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [sessionId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [session?.conversationHistory]);
 
   const startSession = async () => {
+    if (loading) return;
     if (!topic.trim()) {
       toast.error('Введите тему для объяснения');
       return;
@@ -48,8 +64,9 @@ export function FeynmanPage() {
         subjectId: selectedSubject || undefined,
       });
       setSession(res.data.data);
+      setParams({ session: res.data.data.id });
     } catch (e) {
-      toast.error('Ошибка при создании сессии');
+      toast.error(errorText(e));
     } finally {
       setLoading(false);
     }
@@ -73,8 +90,9 @@ export function FeynmanPage() {
       });
       setSession(res.data.data);
     } catch (e) {
-      toast.error('Ошибка при отправке объяснения');
-      // Rollback on error could be implemented here
+      toast.error(errorText(e));
+      setSession(session);
+      setInput(userMsg);
     } finally {
       setLoading(false);
     }
@@ -88,7 +106,7 @@ export function FeynmanPage() {
       setSession(res.data.data);
       toast.success('Сессия завершена!');
     } catch (e) {
-      toast.error('Ошибка при завершении сессии');
+      toast.error(errorText(e));
     } finally {
       setLoading(false);
     }
@@ -223,7 +241,7 @@ export function FeynmanPage() {
             
             <div className="mt-8 text-center">
               <button 
-                onClick={() => setSession(null)}
+                onClick={() => { setSession(null); setParams({}); }}
                 className="px-6 py-3 rounded-xl font-semibold text-white"
                 style={{ background: 'var(--accent-gradient)' }}
               >

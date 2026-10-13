@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { errorText } from '@/api/companion';
 import { api } from '@/api/client';
 import { motion } from 'framer-motion';
-import { MessageSquare, Send, Loader2, Bot, User, Play, CheckCircle2, ChevronRight, AlertTriangle, Swords } from 'lucide-react';
+import { Send, Loader2, Bot, User, Play, CheckCircle2, ChevronRight, AlertTriangle, Swords } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 
@@ -22,6 +24,8 @@ interface Session {
 }
 
 export function DebatePage() {
+  const [params, setParams] = useSearchParams();
+  const sessionId = params.get('session');
   const [session, setSession] = useState<Session | null>(null);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -32,14 +36,26 @@ export function DebatePage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    api.get('/subjects').then(res => setSubjects(res.data.data || [])).catch(() => {});
+    api.get('/subjects').then(res => setSubjects(res.data.data || [])).catch(e => toast.error(errorText(e)));
   }, []);
+
+  useEffect(() => {
+    if (!sessionId) { setSession(null); return; }
+    let cancelled = false;
+    setLoading(true);
+    api.get(`/debate/sessions/${sessionId}`)
+      .then(res => { if (!cancelled) setSession(res.data.data); })
+      .catch(e => { if (!cancelled) toast.error(errorText(e)); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [sessionId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [session?.conversationHistory]);
 
   const startSession = async () => {
+    if (loading) return;
     if (!topic.trim() || !position.trim()) {
       toast.error('Введите тему и вашу позицию');
       return;
@@ -52,8 +68,9 @@ export function DebatePage() {
         subjectId: selectedSubject || undefined,
       });
       setSession(res.data.data);
+      setParams({ session: res.data.data.id });
     } catch (e) {
-      toast.error('Ошибка при создании сессии');
+      toast.error(errorText(e));
     } finally {
       setLoading(false);
     }
@@ -77,7 +94,9 @@ export function DebatePage() {
       });
       setSession(res.data.data);
     } catch (e) {
-      toast.error('Ошибка при отправке аргумента');
+      toast.error(errorText(e));
+      setSession(session);
+      setInput(userMsg);
     } finally {
       setLoading(false);
     }
@@ -91,7 +110,7 @@ export function DebatePage() {
       setSession(res.data.data);
       toast.success('Дебаты завершены!');
     } catch (e) {
-      toast.error('Ошибка при завершении дебатов');
+      toast.error(errorText(e));
     } finally {
       setLoading(false);
     }
@@ -241,7 +260,7 @@ export function DebatePage() {
             
             <div className="mt-8 text-center">
               <button 
-                onClick={() => setSession(null)}
+                onClick={() => { setSession(null); setParams({}); }}
                 className="px-6 py-3 rounded-xl font-semibold text-white"
                 style={{ background: 'var(--accent-gradient)' }}
               >

@@ -53,7 +53,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: async () => {
     try {
       await api.post('/auth/logout');
-    } catch {}
+    } catch {
+      // Local logout must succeed even when the backend is unavailable.
+    }
     localStorage.removeItem('aitutor-token');
     set({ user: null, accessToken: null, isAuthenticated: false, isLoading: false });
   },

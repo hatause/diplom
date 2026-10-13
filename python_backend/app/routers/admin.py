@@ -11,8 +11,8 @@ router = APIRouter(prefix="/admin", tags=["Admin"], dependencies=[Depends(requir
 
 @router.get("/users")
 async def get_users(
-    page: int = Query(1),
-    limit: int = Query(20),
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=1000),
     search: str = Query(""),
     role: Optional[Role] = Query(None)
 ):
