@@ -38,8 +38,8 @@ class BackendRuntimeTests(unittest.IsolatedAsyncioTestCase):
                 target = Path(__file__).resolve().parents[1] / "uploads" / url.rsplit("/", 1)[1]
                 self.assertTrue(target.is_file(), "Uploads must not depend on the launch directory")
                 self.assertEqual(target.read_bytes(), b"Migration upload test")
-                with patch("app.routers.upload.prisma") as upload_db:
-                    upload_db.lecture.find_many = AsyncMock(return_value=[])
+                with patch("app.services.access.prisma") as upload_db:
+                    upload_db.query_raw = AsyncMock(return_value=[])
                     downloaded = await client.get(url)
                 self.assertEqual(downloaded.status_code, 200)
                 self.assertEqual(downloaded.content, b"Migration upload test")

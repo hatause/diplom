@@ -84,9 +84,18 @@ class AuditRegressions(unittest.IsolatedAsyncioTestCase):
         teacher=await self.user('TEACHER'); group=await self.group(); subject=await self.subject(teacher)
         path=UPLOAD_DIR/(self.prefix+'.txt');path.write_text('Private material');self.files.append(path)
         url='/api/v1/uploads/'+path.name
-        await prisma.lecture.create(data={'title':'Private','content':'','subjectId':subject.id,'groupId':group.id,'teacherId':self.admin.id,'fileUrl':url})
+        lecture=await prisma.lecture.create(data={'title':'Private','content':'','subjectId':subject.id,'groupId':group.id,'teacherId':self.admin.id,'fileUrl':url})
         for alias in [url, url+'?download=1', url.replace('/audit-', '/%61udit-')]:
             response=await self.client.post('/api/v1/lectures',headers=self.headers(teacher),json={'title':'Copy','content':'','subjectId':subject.id,'fileUrl':alias})
+            self.assertEqual(response.status_code,403,response.text)
+        # The earlier API also stored noncanonical URLs. They must remain protected.
+        for stored_url in [url+'?download=1', url.replace('/audit-', '/%61udit-'), url+'#page=1']:
+            await prisma.lecture.update(where={'id':lecture.id},data={'fileUrl':stored_url})
+            denied=await self.client.get(url,headers=self.headers(teacher))
+            self.assertEqual(denied.status_code,403,denied.text)
+            own=await self.client.get(url,headers=self.headers(self.admin))
+            self.assertEqual(own.status_code,200,own.text)
+            response=await self.client.post('/api/v1/lectures',headers=self.headers(teacher),json={'title':'Legacy copy','subjectId':subject.id,'fileUrl':url})
             self.assertEqual(response.status_code,403,response.text)
         allowed=await self.client.post('/api/v1/lectures',headers=self.headers(self.admin),json={'title':'Authorized copy','content':'','subjectId':subject.id,'fileUrl':url})
         self.assertEqual(allowed.status_code,200,allowed.text)

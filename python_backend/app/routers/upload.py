@@ -3,8 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from app.core.security import require_roles, get_current_user, TokenData
 from fastapi.responses import FileResponse
-from app.db.database import prisma
-from app.services.access import require_lecture_access
+from app.services.access import find_attachment_references, require_lecture_access
 from app.services.lecture_material import attachment_path
 from app.core.config import UPLOAD_DIR
 from prisma.enums import Role
@@ -58,7 +57,7 @@ files_router = APIRouter(prefix="/uploads", tags=["Upload"])
 async def download_file(filename: str, user: TokenData = Depends(get_current_user)):
     url = f"/api/v1/uploads/{filename}"
     path = attachment_path(url)
-    lectures = await prisma.lecture.find_many(where={"fileUrl": url})
+    lectures = await find_attachment_references(f"/api/v1/uploads/{path.name}")
     if not lectures and user.role not in (Role.TEACHER, Role.ADMIN):
         raise HTTPException(404, "Файл не найден")
     if lectures:

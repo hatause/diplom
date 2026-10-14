@@ -3,7 +3,7 @@ from app.db.database import prisma
 from app.schemas.lectures import LectureCreate
 from app.schemas.tests import GenerateTestRequest
 from app.services.test import test_service
-from app.services.access import require_group_access, require_lecture_access
+from app.services.access import find_attachment_references, require_group_access, require_lecture_access
 from app.services.lecture_material import lecture_material, read_attachment, attachment_path
 
 class LecturesService:
@@ -61,7 +61,7 @@ class LecturesService:
             path = attachment_path(file_url)
             file_url = f"/api/v1/uploads/{path.name}"
             # A known URL must not allow republishing another group's private file.
-            references = await prisma.lecture.find_many(where={"fileUrl": file_url})
+            references = await find_attachment_references(file_url)
             if references:
                 for reference in references:
                     try:

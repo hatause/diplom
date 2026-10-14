@@ -1,6 +1,40 @@
 """Shared checks for materials and groups visible to the signed-in user."""
+from dataclasses import dataclass
+from urllib.parse import unquote, urlsplit
+
 from fastapi import HTTPException
 from app.db.database import prisma
+
+
+@dataclass(frozen=True)
+class AttachmentReference:
+    id: str
+    groupId: str | None
+    teacherId: str
+    fileUrl: str
+    fileName: str | None
+
+
+async def find_attachment_references(canonical_url: str) -> list[AttachmentReference]:
+    """Match legacy URL aliases using metadata, without opening other files."""
+    candidates = await prisma.query_raw(
+        '''SELECT id, "groupId", "teacherId", "fileUrl", "fileName"
+           FROM "Lecture"
+           WHERE "fileUrl" = $1
+              OR strpos("fileUrl", '%') > 0
+              OR strpos("fileUrl", '?') > 0
+              OR strpos("fileUrl", '#') > 0''',
+        canonical_url,
+    )
+    references = []
+    for row in candidates:
+        try:
+            parsed = urlsplit(row['fileUrl'])
+        except ValueError:
+            continue
+        if not parsed.scheme and not parsed.netloc and unquote(parsed.path) == canonical_url:
+            references.append(AttachmentReference(**row))
+    return references
 
 
 async def require_group_access(group_id: str, user_id: str, role: str | None = None):
