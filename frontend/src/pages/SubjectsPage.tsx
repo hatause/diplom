@@ -39,7 +39,7 @@ export function SubjectsPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-bold" style={{ color: sub.avgScore >= 70 ? '#10B981' : sub.avgScore >= 50 ? '#F59E0B' : 'var(--text-tertiary)' }}>
-                    {sub.avgScore > 0 ? `${sub.avgScore}%` : '—'}
+                    {sub.attemptsCount > 0 ? `${sub.avgScore}%` : '—'}
                   </p>
                   <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>средний балл</p>
                 </div>

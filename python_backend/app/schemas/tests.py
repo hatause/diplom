@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, model_validator, field_validator, ConfigDict
-from typing import List, Optional, Union
+from typing import Annotated, List, Optional, Union
 from enum import Enum
 import uuid
 
@@ -27,6 +27,13 @@ class GenerateTestRequest(BaseModel):
     @classmethod
     def clean_topic(cls, value):
         return (value.strip() or None) if isinstance(value, str) else value
+
+class SavedProgress(BaseModel):
+    answers: dict[str, Optional[Union[str, List[str]]]] = Field(default_factory=dict)
+    timeSpent: dict[str, Annotated[int, Field(ge=0, strict=True)]] = Field(default_factory=dict)
+    currentIdx: int = Field(default=0, ge=0, strict=True)
+    elapsed: int = Field(default=0, ge=0, strict=True)
+
 
 class AnswerItem(BaseModel):
     questionId: uuid.UUID

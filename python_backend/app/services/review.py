@@ -7,6 +7,7 @@ class ReviewService:
         due_topics = await prisma.topicprogress.find_many(
             where={
                 "userId": user_id,
+                "topic": {"is": {"subject": {"is": {"isActive": True}}}},
                 "OR": [
                     {"nextReviewAt": {"lte": now}},
                     {"masteryScore": {"lt": 60}}

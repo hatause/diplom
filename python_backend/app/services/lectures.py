@@ -56,8 +56,22 @@ class LecturesService:
         subject = await prisma.subject.find_unique(where={"id": data.subjectId})
         if owner.role != "ADMIN" and subject.teacherId != user_id:
             raise HTTPException(403, "Нельзя публиковать лекции по чужому предмету")
-        if data.fileUrl:
-            attachment_path(data.fileUrl)
+        file_url = data.fileUrl
+        if file_url:
+            path = attachment_path(file_url)
+            file_url = f"/api/v1/uploads/{path.name}"
+            # A known URL must not allow republishing another group's private file.
+            references = await prisma.lecture.find_many(where={"fileUrl": file_url})
+            if references:
+                for reference in references:
+                    try:
+                        await require_lecture_access(reference, user_id)
+                        break
+                    except HTTPException as exc:
+                        if exc.status_code != 403:
+                            raise
+                else:
+                    raise HTTPException(403, "Нет доступа к прикреплённому файлу")
         lecture = await prisma.lecture.create(
             data={
                 "title": data.title,
@@ -65,7 +79,7 @@ class LecturesService:
                 "groupId": group_id,
                 "subjectId": data.subjectId,
                 "teacherId": user_id,
-                "fileUrl": data.fileUrl,
+                "fileUrl": file_url,
                 "fileName": data.fileName
             }
         ) # type: ignore

@@ -21,8 +21,7 @@ class SubjectsService:
                     "test": {"is": {"subjectId": subject.id}},
                     "status": "COMPLETED"
                 },
-                order={"completedAt": "desc"},
-                take=10
+                order={"completedAt": "desc"}
             )
             
             avg_score = 0

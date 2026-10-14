@@ -388,7 +388,7 @@ export function AITutorPage({ mode = "tutor" }: { mode?: Mode }) {
                   ref={file}
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
-                  className="sr-only"
+                  className="hidden"
                   tabIndex={-1}
                   onChange={(e) => {
                     selectImage(e.target.files?.[0]);

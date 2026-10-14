@@ -39,6 +39,11 @@ export function TestPlayerPage() {
           navigate(`/test/${attemptId}/result`, { replace: true });
           return;
         }
+        if (attempt.status !== 'IN_PROGRESS') {
+          toast.error('Эта попытка отменена. Начните новый тест.');
+          navigate('/history', { replace: true });
+          return;
+        }
         setTest(attempt.test);
         const saved = attempt.savedProgress;
         setAnswers(saved?.answers || {});

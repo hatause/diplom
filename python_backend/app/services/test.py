@@ -133,11 +133,16 @@ class TestService:
     async def save_progress(self, attempt_id: str, user_id: str, progress: Any):
         async with prisma.tx() as db:
             await db.query_raw('SELECT id FROM "User" WHERE id = $1 FOR UPDATE', user_id)
-            attempt = await db.attempt.find_unique(where={"id": attempt_id})
+            attempt = await db.attempt.find_unique(where={"id": attempt_id}, include={"test": {"include": {"questions": True}}})
             if not attempt or attempt.userId != user_id:
                 raise HTTPException(status_code=404, detail="Attempt not found")
             if attempt.status != "IN_PROGRESS":
                 raise HTTPException(status_code=400, detail="Attempt already completed")
+            question_ids = {q.id for q in attempt.test.questions or []}
+            if (set(progress['answers']) | set(progress['timeSpent'])) - question_ids:
+                raise HTTPException(400, "Прогресс содержит вопросы другого теста")
+            if progress['currentIdx'] >= len(question_ids):
+                raise HTTPException(400, "Вопрос не найден в этом тесте")
             return await db.attempt.update(
                 where={"id": attempt_id}, data={"savedProgress": json.dumps(progress)}
             )

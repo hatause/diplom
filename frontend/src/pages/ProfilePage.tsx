@@ -44,13 +44,13 @@ export function ProfilePage() {
 
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-6">
         <div className="flex items-center gap-4 mb-6">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-bold text-white" style={{ background: 'var(--accent-gradient)' }}>
+          <div className="w-16 h-16 shrink-0 rounded-2xl flex items-center justify-center text-2xl font-bold text-white" style={{ background: 'var(--accent-gradient)' }}>
             {user?.firstName?.[0]}{user?.lastName?.[0]}
           </div>
-          <div>
-            <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{user?.firstName} {user?.lastName}</h2>
+          <div className="min-w-0">
+            <h2 className="text-lg font-bold break-words" style={{ color: 'var(--text-primary)' }}>{user?.firstName} {user?.lastName}</h2>
             <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-tertiary)' }}>
-              <Mail size={14} /> {user?.email}
+              <Mail size={14} className="shrink-0" /> <span className="break-all">{user?.email}</span>
             </div>
             <span className="inline-flex items-center gap-1 mt-1 text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--accent-bg)', color: 'var(--accent-1)' }}>
               <Shield size={12} /> {user?.role}
@@ -62,9 +62,9 @@ export function ProfilePage() {
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <input type="text" value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))}
-                className="px-4 py-3 rounded-xl text-sm outline-none" style={inputStyle} placeholder="Имя" />
+                className="w-full min-w-0 px-4 py-3 rounded-xl text-sm outline-none" style={inputStyle} placeholder="Имя" />
               <input type="text" value={form.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))}
-                className="px-4 py-3 rounded-xl text-sm outline-none" style={inputStyle} placeholder="Фамилия" />
+                className="w-full min-w-0 px-4 py-3 rounded-xl text-sm outline-none" style={inputStyle} placeholder="Фамилия" />
             </div>
             <div className="flex gap-2">
               <button onClick={handleSave} disabled={saving} className="px-4 py-2 rounded-xl text-sm font-medium text-white flex items-center gap-2" style={{ background: 'var(--accent-gradient)' }}>
@@ -90,7 +90,7 @@ export function ProfilePage() {
               <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Серия</p>
             </div>
             <div className="text-center">
-              <p className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>{user.studentProfile.group?.name || '—'}</p>
+              <p className="text-sm sm:text-xl font-bold break-words" style={{ color: 'var(--text-primary)' }}>{user.studentProfile.group?.name || '—'}</p>
               <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Группа</p>
             </div>
           </div>

@@ -79,10 +79,12 @@ class MessagesService:
             order={"createdAt": "asc"}
         )
 
-        await prisma.message.update_many(
-            where={"senderId": other_id, "receiverId": my_id, "isRead": False},
-            data={"isRead": True}
-        )
+        unread_ids = [m.id for m in messages if m.receiverId == my_id and not m.isRead]
+        if unread_ids:
+            await prisma.message.update_many(
+                where={"id": {"in": unread_ids}, "receiverId": my_id},
+                data={"isRead": True}
+            )
 
         return [
             {**m.model_dump(), "isRead": True if m.receiverId == my_id else m.isRead}

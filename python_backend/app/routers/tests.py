@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Path, Body
 from app.core.security import get_current_user, TokenData
 from app.services.test import test_service
-from app.schemas.tests import GenerateTestRequest, SubmitTestRequest
+from app.schemas.tests import GenerateTestRequest, SubmitTestRequest, SavedProgress
 from typing import Any
 
 router = APIRouter(prefix="/tests", tags=["Tests"])
@@ -33,10 +33,10 @@ async def start_attempt(
 @router.put("/{id}/progress")
 async def save_progress(
     id: str = Path(...),
-    progress: Any = Body(...),
+    progress: SavedProgress = Body(...),
     current_user: TokenData = Depends(get_current_user)
 ):
-    result = await test_service.save_progress(id, current_user.userId, progress)
+    result = await test_service.save_progress(id, current_user.userId, progress.model_dump())
     return {"success": True, "data": {"savedAt": result.updatedAt}}
 
 @router.post("/{id}/submit")
