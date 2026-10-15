@@ -125,6 +125,9 @@ const shots = process.env.LAB_SCREENSHOT_DIR;
  await p.getByRole('button',{name:'Переподключиться',exact:true}).click();await p.waitForFunction(id=>{const c=JSON.parse(localStorage.getItem('aitutor-pc-lab-v1:'+id));return c?.progress.inspected_parts_count===4&&!c.dirty;},user.id);
  saved=(await (await context.request.get(base+'/api/v1/pc-lab/progress',{headers:auth})).json()).data;
  check(saved.inspected_parts.includes('part-ssd'),'Offline draft synced after reconnect');
+ await p.route('**/api/v1/pc-lab/progress',async route=>{await new Promise(resolve=>setTimeout(resolve,10000));await route.abort().catch(()=>{});});
+ await open();
+ check(true,'Unresponsive progress API times out and unlocks local practice');
  check(errors.length===0,'No browser JavaScript errors: '+errors.join('; '));
  console.log(`PASS: ${checks} checks; temporary user ${user.id} in disposable DB`);
  } finally {await b.close();}

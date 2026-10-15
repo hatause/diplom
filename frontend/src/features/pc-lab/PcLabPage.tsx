@@ -29,7 +29,7 @@ export default function PcLabPage() {
    posting=true;const sentVersion=version;
    setStatus('Сохранение…');
    try {
-    const response=await api.post('/pc-lab/progress',payload(current),{signal:controller.signal});
+    const response=await api.post('/pc-lab/progress',payload(current),{signal:controller.signal,timeout:8000});
     if(disposed)return;
     const server=normalizeProgress(response.data.data);
     current=sentVersion===version?server:{...current,revision:server.revision};
@@ -46,7 +46,7 @@ export default function PcLabPage() {
    let restore=false;
    if(user){
     try{
-     const response=await api.get('/pc-lab/progress',{signal:controller.signal});
+     const response=await api.get('/pc-lab/progress',{signal:controller.signal,timeout:8000});
      if(disposed)return;
      const server=normalizeProgress(response.data.data);
      cloudReady=true;
