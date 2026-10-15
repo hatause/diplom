@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Cloud, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Cloud, Moon, RotateCcw, Sun } from 'lucide-react';
 import { api } from '@/api/client';
 import { errorText } from '@/api/companion';
 import { useAuthStore } from '@/store/auth.store';
+import { useThemeStore } from '@/store/theme.store';
 import { cacheKey, normalizeProgress, payload, readCache } from './progress';
 import './pc-lab.css';
 
 export default function PcLabPage() {
  const user=useAuthStore(s=>s.user);
+ const {theme,toggle}=useThemeStore();
  const frame=useRef<HTMLIFrameElement>(null);
  const [status,setStatus]=useState('Загрузка прогресса…');
  const [score,setScore]=useState(0),[height,setHeight]=useState(950),[reload,setReload]=useState(0);
@@ -75,7 +77,7 @@ export default function PcLabPage() {
   return ()=>{disposed=true;controller.abort();clearTimeout(timer);window.removeEventListener('message',receive);window.removeEventListener('online',reconnect);};
  },[user?.id,reload]);
  return <main className="pc-lab-page">
-  <header className="pc-lab-toolbar"><Link to={user?'/dashboard':'/'}><ArrowLeft size={17}/> Вернуться на главную</Link><h1>3D-практикум · ПК и Windows</h1><div className="pc-lab-sync" data-saved={status==='Сохранено в профиле'} role="status"><Cloud size={17}/><span>{status} · <b>{score} / 100</b></span></div></header>
+  <header className="pc-lab-toolbar"><Link to={user?'/dashboard':'/'}><ArrowLeft size={17}/> Вернуться на главную</Link><h1>3D-практикум · ПК и Windows</h1><div className="pc-lab-sync" data-saved={status==='Сохранено в профиле'} role="status"><Cloud size={17}/><span>{status} · <b>{score} / 100</b></span></div><button className="icon-button" onClick={toggle} aria-label={theme==='dark'?'Светлая тема':'Тёмная тема'} title={theme==='dark'?'Светлая тема':'Тёмная тема'}>{theme==='dark'?<Sun size={18}/>:<Moon size={18}/>}</button></header>
   <div className="pc-lab-intro"><p>Изучи 8 деталей, собери компьютер, обнови UEFI и установи Windows. Для полного результата отработай шесть неисправностей и пройди два мини-теста. Это учебная симуляция; команды выполняются только внутри стенда.</p>{!user&&<Link to="/login">Войти для сохранения в профиле →</Link>}
   {user&&!conflict&&<button className="button secondary" onClick={()=>setReload(n=>n+1)}><RotateCcw size={16}/> Переподключиться</button>}
   {conflict&&<button className="button secondary" title="Заменить локальный черновик сохранённой версией" onClick={()=>{try{localStorage.removeItem(cacheKey(user?.id));}catch{/* Cache can be unavailable in private browsing. */}setConflict(false);setReload(n=>n+1);}}><RotateCcw size={16}/> Загрузить версию с сервера</button>}

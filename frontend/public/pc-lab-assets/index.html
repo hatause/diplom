@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <title>Anatomy 3D PC Lab — 3D-Модели Деталей, Сборка, BIOS и Конструктор Windows 11</title>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
+<script src="./theme-sync.js"></script>
+<link rel="stylesheet" href="./site-theme.css"/>
 <link rel="stylesheet" href="./lab.css"/>
 
 </head>
@@ -154,7 +156,7 @@
             <span class="monitor-PowerLed"></span>
             <span id="monitorBezelTitle">Лабораторный монитор • Сигнал с видеокарты (#part-gpu)</span>
           </div>
-          <span style="color:#94a3b8; cursor:pointer;" onclick="toggleMonitorMinimize()">[Свернуть экран _]</span>
+          <span style="color:var(--text-secondary); cursor:pointer;" onclick="toggleMonitorMinimize()">[Свернуть экран _]</span>
         </div>
         <div class="monitor-ScreenBody" id="monitorScreenContent"></div>
       </div>

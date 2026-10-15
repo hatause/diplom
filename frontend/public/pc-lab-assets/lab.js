@@ -71,7 +71,7 @@
         <polygon points="430,238 575,310 430,382 285,310" fill="#047857" stroke="#facc15" stroke-width="1" stroke-dasharray="6 4"/>
         <!-- Золотой ключ ориентации в углу -->
         <polygon points="262,310 285,299 285,321" fill="#facc15"/>
-        <text x="635" y="345" fill="#6ee7b7" font-size="12" font-weight="700">1. Подложка PCB + Матрица LGA1700</text>
+        <text class="part-layer-label" x="635" y="345" fill="#6ee7b7" font-size="12" font-weight="700">1. Подложка PCB + Матрица LGA1700</text>
       </g>
 
       <!-- СЛОЙ 2 (СРЕДНИЙ): Кремниевый кристалл процессора (Silicon Die: P-Cores + E-Cores) -->
@@ -86,7 +86,7 @@
           <line x1="365" y1="272" x2="455" y2="317"/><line x1="475" y1="262" x2="385" y2="307"/>
           <line x1="455" y1="252" x2="365" y2="297"/><line x1="495" y1="272" x2="405" y2="317"/>
         </g>
-        <text x="555" y="285" fill="#7dd3fc" font-size="12" font-weight="700">2. Кремниевый кристалл (P/E ядра + Кэш L3)</text>
+        <text class="part-layer-label" x="555" y="285" fill="#7dd3fc" font-size="12" font-weight="700">2. Кремниевый кристалл (P/E ядра + Кэш L3)</text>
       </g>
 
       <!-- СЛОЙ 3 (ВЕРХНИЙ): Никелированная медная крышка теплораспределителя (IHS) -->
@@ -99,7 +99,7 @@
         <!-- Лазерная маркировка процессора -->
         <text x="430" y="262" fill="#0f172a" font-size="13" font-weight="800" text-anchor="middle">INTEL CORE i7 / i9</text>
         <text x="430" y="279" fill="#1e293b" font-size="10" font-weight="700" text-anchor="middle">LGA1700 • PCIe 5.0 • DDR5</text>
-        <text x="595" y="245" fill="#f8fafc" font-size="12" font-weight="700">3. Крышка теплораспределителя (IHS)</text>
+        <text class="part-layer-label" x="595" y="245" fill="#f8fafc" font-size="12" font-weight="700">3. Крышка теплораспределителя (IHS)</text>
       </g>
     `,
 
@@ -109,7 +109,7 @@
       <g class="sub-layer layer-bottom">
         <polygon points="210,320 470,440 650,350 390,230" fill="#1e293b" stroke="#94a3b8" stroke-width="1.6"/>
         <polygon points="450,340 580,400 620,380 490,320" fill="#090d16" stroke="#38bdf8" stroke-width="1.2"/>
-        <text x="645" y="385" fill="#94a3b8" font-size="12" font-weight="700">1. Армированный бэкплейт (Backplate)</text>
+        <text class="part-layer-label" x="645" y="385" fill="#94a3b8" font-size="12" font-weight="700">1. Армированный бэкплейт (Backplate)</text>
       </g>
 
       <!-- СЛОЙ 2 (СРЕДНИЙ): Печатная плата видеокарты (GPU Die + 8x GDDR6X + 16-phase VRM + 12VHPWR) -->
@@ -128,7 +128,7 @@
         </g>
         <!-- Разъем питания 16-pin 12VHPWR -->
         <polygon points="515,342 545,356 555,348 525,334" fill="#f59e0b" stroke="#fff"/>
-        <text x="630" y="305" fill="#38bdf8" font-size="12" font-weight="700">2. Плата PCB: Чип GPU + GDDR6X + VRM</text>
+        <text class="part-layer-label" x="630" y="305" fill="#38bdf8" font-size="12" font-weight="700">2. Плата PCB: Чип GPU + GDDR6X + VRM</text>
       </g>
 
       <!-- СЛОЙ 3 (ВЕРХНИЙ): Радиатор с медными теплотрубками и кожух с 3 вентиляторами -->
@@ -140,7 +140,7 @@
         <ellipse cx="335" cy="215" rx="42" ry="22" transform="rotate(25 335 215)" fill="#020617" stroke="#38bdf8" stroke-width="1.5"/>
         <ellipse cx="430" cy="258" rx="42" ry="22" transform="rotate(25 430 258)" fill="#020617" stroke="#a855f7" stroke-width="1.5"/>
         <ellipse cx="525" cy="301" rx="42" ry="22" transform="rotate(25 525 301)" fill="#020617" stroke="#38bdf8" stroke-width="1.5"/>
-        <text x="635" y="220" fill="#f8fafc" font-size="12" font-weight="700">3. Радиатор + 3 вентилятора Axial-Tech</text>
+        <text class="part-layer-label" x="635" y="220" fill="#f8fafc" font-size="12" font-weight="700">3. Радиатор + 3 вентилятора Axial-Tech</text>
       </g>
     `,
 
@@ -154,7 +154,7 @@
         <g stroke="#1e3a5f" stroke-width="1.5" fill="none">
           <polyline points="330,275 430,325 520,280"/><polyline points="360,310 450,355 540,310"/>
         </g>
-        <text x="645" y="365" fill="#38bdf8" font-size="12" font-weight="700">1. 8-слойная печатная плата ATX (PCB)</text>
+        <text class="part-layer-label" x="645" y="365" fill="#38bdf8" font-size="12" font-weight="700">1. 8-слойная печатная плата ATX (PCB)</text>
       </g>
 
       <!-- СЛОЙ 2 (СРЕДНИЙ): Сокет LGA, слоты DDR5, PCIe 5.0, чипсет и микросхема BIOS -->
@@ -168,7 +168,7 @@
         <line x1="315" y1="295" x2="435" y2="355" stroke="#e2e8f0" stroke-width="6"/>
         <!-- Микросхема ПЗУ UEFI BIOS (#bios-chip) -->
         <polygon points="415,355 445,370 430,378 400,363" fill="#1e293b" stroke="#f59e0b" stroke-width="2"/>
-        <text x="615" y="290" fill="#fde68a" font-size="12" font-weight="700">2. Сокет LGA + DDR5 + Чип UEFI BIOS</text>
+        <text class="part-layer-label" x="615" y="290" fill="#fde68a" font-size="12" font-weight="700">2. Сокет LGA + DDR5 + Чип UEFI BIOS</text>
       </g>
 
       <!-- СЛОЙ 3 (ВЕРХНИЙ): Массивные радиаторы VRM, Чипсета и M.2 Thermal Guard -->
@@ -180,7 +180,7 @@
         <polygon points="355,280 455,330 435,340 335,290" fill="#475569" stroke="#38bdf8" stroke-width="1.2"/>
         <!-- Радиатор Чипсета Z790 -->
         <polygon points="465,315 545,355 510,373 430,333" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
-        <text x="585" y="215" fill="#f8fafc" font-size="12" font-weight="700">3. Радиаторы VRM, PCH и броня M.2</text>
+        <text class="part-layer-label" x="585" y="215" fill="#f8fafc" font-size="12" font-weight="700">3. Радиаторы VRM, PCH и броня M.2</text>
       </g>
     `,
 
@@ -189,7 +189,7 @@
       <!-- СЛОЙ 1: Нижняя пластина радиатора -->
       <g class="sub-layer layer-bottom">
         <polygon points="230,300 550,380 590,350 270,270" fill="#1e293b" stroke="#64748b" stroke-width="1.5"/>
-        <text x="595" y="385" fill="#94a3b8" font-size="12" font-weight="700">1. Тыльная теплоотводящая пластина</text>
+        <text class="part-layer-label" x="595" y="385" fill="#94a3b8" font-size="12" font-weight="700">1. Тыльная теплоотводящая пластина</text>
       </g>
       <!-- СЛОЙ 2: Плата DDR5 с 8 чипами памяти и контроллером питания PMIC -->
       <g class="sub-layer layer-mid">
@@ -206,13 +206,13 @@
           <polygon points="460,299 490,307 502,297 472,289"/>
           <polygon points="505,310 535,318 547,308 517,300"/>
         </g>
-        <text x="590" y="310" fill="#6ee7b7" font-size="12" font-weight="700">2. Чипы DDR5 + Контроллер PMIC (On-Die ECC)</text>
+        <text class="part-layer-label" x="590" y="310" fill="#6ee7b7" font-size="12" font-weight="700">2. Чипы DDR5 + Контроллер PMIC (On-Die ECC)</text>
       </g>
       <!-- СЛОЙ 3: Верхний радиатор и световод ARGB -->
       <g class="sub-layer layer-top">
         <polygon points="230,225 550,305 590,275 270,195" fill="#0f172a" stroke="#38bdf8" stroke-width="1.8"/>
         <polygon points="250,205 570,285 585,273 265,193" fill="url(#grad-rgb)"/>
-        <text x="595" y="235" fill="#f8fafc" font-size="12" font-weight="700">3. Алюминиевый радиатор + Световод ARGB</text>
+        <text class="part-layer-label" x="595" y="235" fill="#f8fafc" font-size="12" font-weight="700">3. Алюминиевый радиатор + Световод ARGB</text>
       </g>
     `,
 
@@ -225,7 +225,7 @@
         <polygon points="540,375 585,340 598,344 553,379" fill="#facc15"/>
         <!-- Выемка под крепежный винт M.2 -->
         <circle cx="262" cy="278" r="7" fill="#050811" stroke="#f59e0b" stroke-width="2"/>
-        <text x="605" y="375" fill="#6ee7b7" font-size="12" font-weight="700">1. Плата M.2 2280 + Ключ PCIe 4.0 x4 (M-Key)</text>
+        <text class="part-layer-label" x="605" y="375" fill="#6ee7b7" font-size="12" font-weight="700">1. Плата M.2 2280 + Ключ PCIe 4.0 x4 (M-Key)</text>
       </g>
       <!-- СЛОЙ 2: Контроллер NVMe, буфер DRAM и чипы 3D TLC NAND -->
       <g class="sub-layer layer-mid">
@@ -236,13 +236,13 @@
         <!-- 2 больших банка флеш-памяти 3D NAND -->
         <polygon points="290,258 355,275 380,255 315,238" fill="#1e293b" stroke="#f59e0b" stroke-width="1.2"/>
         <polygon points="365,278 430,295 455,275 390,258" fill="#1e293b" stroke="#f59e0b" stroke-width="1.2"/>
-        <text x="580" y="300" fill="#fde68a" font-size="12" font-weight="700">2. NVMe-контроллер + DRAM + Чипы 3D NAND</text>
+        <text class="part-layer-label" x="580" y="300" fill="#fde68a" font-size="12" font-weight="700">2. NVMe-контроллер + DRAM + Чипы 3D NAND</text>
       </g>
       <!-- СЛОЙ 3: Графеновый радиатор охлаждения -->
       <g class="sub-layer layer-top">
         <polygon points="255,235 535,310 575,278 295,203" fill="#1e293b" stroke="#38bdf8" stroke-width="1.6"/>
         <line x1="285" y1="225" x2="535" y2="292" stroke="#38bdf8" stroke-width="2" stroke-dasharray="10 5"/>
-        <text x="585" y="235" fill="#f8fafc" font-size="12" font-weight="700">3. Графеновый радиатор охлаждения SSD</text>
+        <text class="part-layer-label" x="585" y="235" fill="#f8fafc" font-size="12" font-weight="700">3. Графеновый радиатор охлаждения SSD</text>
       </g>
     `,
 
@@ -253,7 +253,7 @@
         <polygon points="250,310 430,400 610,310 430,220" fill="#0f172a" stroke="#475569" stroke-width="1.8"/>
         <polygon points="250,310 430,400 430,445 250,355" fill="#1e293b" stroke="#64748b"/>
         <polygon points="430,400 610,310 610,355 430,445" fill="#090d16" stroke="#64748b"/>
-        <text x="620" y="375" fill="#94a3b8" font-size="12" font-weight="700">1. Экранированное шасси ATX 3.0 + Модульные разъемы</text>
+        <text class="part-layer-label" x="620" y="375" fill="#94a3b8" font-size="12" font-weight="700">1. Экранированное шасси ATX 3.0 + Модульные разъемы</text>
       </g>
       <!-- СЛОЙ 2: Силовая электроника (Трансформатор, конденсатор 450V, дроссели APFC) -->
       <g class="sub-layer layer-mid">
@@ -263,7 +263,7 @@
         <polygon points="415,255 475,285 440,305 380,275" fill="#ca8a04" stroke="#fef08a" stroke-width="1.5"/>
         <!-- Алюминиевые гребни радиаторов диодных сборок и MOSFET -->
         <polygon points="465,240 535,275 520,285 450,250" fill="#94a3b8" stroke="#f8fafc"/>
-        <text x="580" y="285" fill="#fde68a" font-size="12" font-weight="700">2. Силовой трансформатор + Конденсатор 450V</text>
+        <text class="part-layer-label" x="580" y="285" fill="#fde68a" font-size="12" font-weight="700">2. Силовой трансформатор + Конденсатор 450V</text>
       </g>
       <!-- СЛОЙ 3: Верхняя крышка с 120-мм вентилятором и грилем -->
       <g class="sub-layer layer-top">
@@ -271,7 +271,7 @@
         <ellipse cx="430" cy="235" rx="78" ry="42" fill="#090d16" stroke="#64748b" stroke-width="2"/>
         <ellipse cx="430" cy="235" rx="55" ry="29" fill="none" stroke="#38bdf8" stroke-width="1.2" stroke-dasharray="6 4"/>
         <circle cx="430" cy="235" r="16" fill="#334155" stroke="#f8fafc"/>
-        <text x="615" y="210" fill="#f8fafc" font-size="12" font-weight="700">3. Крышка с 120-мм FDB вентилятором</text>
+        <text class="part-layer-label" x="615" y="210" fill="#f8fafc" font-size="12" font-weight="700">3. Крышка с 120-мм FDB вентилятором</text>
       </g>
     `,
 
@@ -282,21 +282,21 @@
         <polygon points="365,335 430,368 495,335 430,302" fill="#b45309" stroke="#fef08a" stroke-width="1.6"/>
         <!-- U-образные медные теплотрубки -->
         <path d="M 385,335 L 385,230 M 410,345 L 410,235 M 450,345 L 450,235 M 475,335 L 475,230" stroke="#d97706" stroke-width="7" stroke-linecap="round"/>
-        <text x="545" y="355" fill="#fde68a" font-size="12" font-weight="700">1. Медная подошва + 4 теплотрубки с хладагентом</text>
+        <text class="part-layer-label" x="545" y="355" fill="#fde68a" font-size="12" font-weight="700">1. Медная подошва + 4 теплотрубки с хладагентом</text>
       </g>
       <!-- СЛОЙ 2: Массив из 52 алюминиевых ребер радиатора -->
       <g class="sub-layer layer-mid">
         <polygon points="310,250 430,310 550,250 430,190" fill="#94a3b8" stroke="#f8fafc" stroke-width="1.5"/>
         <polygon points="310,250 430,310 430,365 310,305" fill="#475569" stroke="#cbd5e1"/>
         <polygon points="430,310 550,250 550,305 430,365" fill="#334155" stroke="#94a3b8"/>
-        <text x="575" y="285" fill="#7dd3fc" font-size="12" font-weight="700">2. Секция из 52 алюминиевых пластин</text>
+        <text class="part-layer-label" x="575" y="285" fill="#7dd3fc" font-size="12" font-weight="700">2. Секция из 52 алюминиевых пластин</text>
       </g>
       <!-- СЛОЙ 3: Верхняя декоративная крышка и вентилятор 120мм PWM -->
       <g class="sub-layer layer-top">
         <polygon points="310,205 430,265 550,205 430,145" fill="#0f172a" stroke="#38bdf8" stroke-width="1.8"/>
         <circle cx="385" cy="205" r="4" fill="#d97706"/><circle cx="410" cy="217" r="4" fill="#d97706"/>
         <circle cx="450" cy="217" r="4" fill="#d97706"/><circle cx="475" cy="205" r="4" fill="#d97706"/>
-        <text x="575" y="195" fill="#f8fafc" font-size="12" font-weight="700">3. Верхний кожух + Нагнетающий вентилятор PWM</text>
+        <text class="part-layer-label" x="575" y="195" fill="#f8fafc" font-size="12" font-weight="700">3. Верхний кожух + Нагнетающий вентилятор PWM</text>
       </g>
     `,
 
@@ -306,17 +306,17 @@
       <g class="sub-layer layer-bottom">
         <polygon points="310,260 550,380 550,450 310,330" fill="#0f172a" stroke="#475569" stroke-width="1.6"/>
         <polygon points="310,260 450,190 690,310 550,380" fill="#1e293b" stroke="#64748b"/>
-        <text x="615" y="395" fill="#94a3b8" font-size="12" font-weight="700">1. Несущая рама шасси + Кожух БП</text>
+        <text class="part-layer-label" x="615" y="395" fill="#94a3b8" font-size="12" font-weight="700">1. Несущая рама шасси + Кожух БП</text>
       </g>
       <!-- СЛОЙ 2: Передняя перфорированная Mesh-панель и пылевые фильтры -->
       <g class="sub-layer layer-mid">
         <polygon points="510,210 650,280 650,390 510,320" fill="#090d16" stroke="#10b981" stroke-width="1.6"/>
-        <text x="665" y="305" fill="#6ee7b7" font-size="12" font-weight="700">2. Продуваемая панель Front Mesh + Фильтры</text>
+        <text class="part-layer-label" x="665" y="305" fill="#6ee7b7" font-size="12" font-weight="700">2. Продуваемая панель Front Mesh + Фильтры</text>
       </g>
       <!-- СЛОЙ 3: Панель из закаленного стекла -->
       <g class="sub-layer layer-top">
         <polygon points="270,190 510,310 510,410 270,290" fill="rgba(56,189,248,0.18)" stroke="#38bdf8" stroke-width="1.8"/>
-        <text x="545" y="215" fill="#f8fafc" font-size="12" font-weight="700">3. Съемная боковая панель из закаленного стекла</text>
+        <text class="part-layer-label" x="545" y="215" fill="#f8fafc" font-size="12" font-weight="700">3. Съемная боковая панель из закаленного стекла</text>
       </g>
     `
   };
@@ -566,7 +566,7 @@
           <div class="win-Box">
             <div class="win-Title">
               <span>🪟 Установка Windows 11 — Проверка оборудования</span>
-              <span style="font-size:11px; color:#fca5a5;">Код сбоя: LAB-TPM (учебный код)</span>
+              <span style="font-size:11px; color:var(--error);">Код сбоя: LAB-TPM (учебный код)</span>
             </div>
             <div class="error-AlertBox">
               <strong>⛔ Запуск Windows 11 на этом компьютере невозможен</strong>
@@ -574,7 +574,7 @@
               • <b>Доверенный платформенный модуль (TPM):</b> Не обнаружен (Требуется версия 2.0)<br/>
               • <b>Безопасная загрузка (Secure Boot):</b> Отключена или активен режим Legacy CSM
             </div>
-            <p style="font-size:11px; color:#cbd5e1;">
+            <p style="font-size:11px; color:var(--text-secondary);">
               <b>Почему возникла проблема:</b> после сброса CMOS или на чистой плате модули <code>Intel PTT / AMD fTPM</code> и <code>Secure Boot</code> могут быть деактивированы. Выберите способ решения:
             </p>
             <div class="solution-Cards">
@@ -595,9 +595,9 @@
           <div class="win-Box">
             <div class="win-Title">
               <span>🪟 Конструктор образа Windows 11 (TPM 2.0 + Secure Boot OK)</span>
-              <span style="font-size:11px; color:#6ee7b7;">Проверка пройдена ✓</span>
+              <span style="font-size:11px; color:var(--success);">Проверка пройдена ✓</span>
             </div>
-            <p style="font-size:11.5px; color:#cbd5e1; margin-bottom:8px;">
+            <p style="font-size:11.5px; color:var(--text-secondary); margin-bottom:8px;">
               Аппаратные требования удовлетворены. Выберите язык, регион и конфигурацию образа:
             </p>
             <div class="setup-locales">
@@ -606,11 +606,11 @@
               <label>Клавиатура <select aria-label="Клавиатура" onchange="setupKeyboard=this.value"><option value="ru" ${setupKeyboard==='ru'?'selected':''}>Русская</option><option value="us" ${setupKeyboard==='us'?'selected':''}>США</option></select></label>
             </div>
             <div style="display:flex; flex-direction:column; gap:6px; font-size:11.5px;">
-              <label style="padding:7px 10px; background:rgba(56,189,248,0.16); border:1px solid #38bdf8; border-radius:6px; cursor:pointer;">
+              <label style="padding:7px 10px; background:var(--accent-bg); border:1px solid var(--text-accent); border-radius:6px; cursor:pointer;">
                 <input type="radio" name="winEd" ${winEdition.includes("Pro") ? "checked" : ""} onchange="winEdition='Windows 11 Pro (x64)'" />
                 <b>Windows 11 Pro (x64)</b> — Полный пакет (BitLocker, Hyper-V, RDP, Group Policy)
               </label>
-              <label style="padding:7px 10px; background:rgba(30,41,59,0.65); border:1px solid rgba(148,163,184,0.2); border-radius:6px; cursor:pointer;">
+              <label style="padding:7px 10px; background:var(--bg-card); border:1px solid var(--border-default); border-radius:6px; cursor:pointer;">
                 <input type="radio" name="winEd" ${winEdition.includes("Education") ? "checked" : ""} onchange="winEdition='Windows 11 Education (x64)'" />
                 <b>Windows 11 Education (x64)</b> — Образовательная лицензия для вузов
               </label>
@@ -637,12 +637,12 @@
           <div class="win-Box">
             <div class="win-Title">
               <span>💾 Где вы хотите установить Windows?</span>
-              <span style="font-size:11px; color:#fca5a5;">0 дисков обнаружено</span>
+              <span style="font-size:11px; color:var(--error);">0 дисков обнаружено</span>
             </div>
             <table class="partition-Table">
               <thead><tr><th>Имя</th><th>Общий размер</th><th>Свободно</th><th>Тип</th></tr></thead>
               <tbody>
-                <tr><td colspan="4" style="text-align:center; color:#fca5a5; padding:14px;">⚠️ Диски не найдены. Нажмите «Загрузить драйвер», чтобы предоставить драйвер запоминающего устройства.</td></tr>
+                <tr><td colspan="4" style="text-align:center; color:var(--error); padding:14px;">⚠️ Диски не найдены. Нажмите «Загрузить драйвер», чтобы предоставить драйвер запоминающего устройства.</td></tr>
               </tbody>
             </table>
             <div class="error-AlertBox">
@@ -674,12 +674,12 @@
           <div class="win-Box">
             <div class="win-Title">
               <span>💾 Накопитель M.2 NVMe SSD 512 ГБ обнаружен</span>
-              <span style="font-size:11px; color:#fca5a5;">Конфликт MBR / UEFI</span>
+              <span style="font-size:11px; color:var(--error);">Конфликт MBR / UEFI</span>
             </div>
             <table class="partition-Table">
               <thead><tr><th>Имя раздела</th><th>Размер</th><th>Стиль разделов</th><th>Статус</th></tr></thead>
               <tbody>
-                <tr><td>Диск 0 Раздел 1 (Старая разметка)</td><td>512.0 ГБ</td><td style="color:#f87171; font-weight:700;">MBR (Legacy)</td><td>Блокирован</td></tr>
+                <tr><td>Диск 0 Раздел 1 (Старая разметка)</td><td>512.0 ГБ</td><td style="color:var(--error); font-weight:700;">MBR (Legacy)</td><td>Блокирован</td></tr>
               </tbody>
             </table>
             <div class="error-AlertBox">
@@ -705,10 +705,10 @@
           <div class="win-Box">
             <div class="win-Title">
               <span>🛠️ Конструктор разделов GPT на #part-ssd (512 ГБ)</span>
-              <span style="font-size:11px; color:#6ee7b7;">Стиль диска: GPT ✓</span>
+              <span style="font-size:11px; color:var(--success);">Стиль диска: GPT ✓</span>
             </div>
 
-            <div style="background:rgba(15,23,42,0.75); border:1px solid rgba(56,189,248,0.3); border-radius:7px; padding:9px 11px; margin-bottom:8px; font-size:11.5px;">
+            <div style="background:var(--bg-card); border:1px solid var(--border-accent); border-radius:7px; padding:9px 11px; margin-bottom:8px; font-size:11.5px;">
               <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
                 <span>Ползунок объема системного тома <b>Диск C: (Windows)</b>: <b><span id="partitionC">${cDriveSizeGb}</span> ГБ</b></span>
                 <span>Том <b>Диск D: (Данные)</b>: <b><span id="partitionD">${dDriveSize}</span> ГБ</b></span>
@@ -722,7 +722,7 @@
               <tbody>
                 <tr><td>Диск 0 Раздел 1: EFI System</td><td>100 МБ</td><td>FAT32</td><td>Загрузчик Windows Boot Manager</td></tr>
                 <tr><td>Диск 0 Раздел 2: MSR</td><td>16 МБ</td><td>Резерв</td><td>Служебный раздел Microsoft</td></tr>
-                <tr style="background:rgba(16,185,129,0.2);"><td><b>Диск 0 Раздел 3: Системный (C:)</b></td><td><b>${cDriveSizeGb}.0 ГБ</b></td><td><b>NTFS</b></td><td><b>Ядро ОС и Программы (Выбран)</b></td></tr>
+                <tr style="background:var(--success-bg);"><td><b>Диск 0 Раздел 3: Системный (C:)</b></td><td><b>${cDriveSizeGb}.0 ГБ</b></td><td><b>NTFS</b></td><td><b>Ядро ОС и Программы (Выбран)</b></td></tr>
                 <tr><td>Диск 0 Раздел 4: Данные (D:)</td><td>${dDriveSize}.0 ГБ</td><td>NTFS</td><td>Файлы пользователя и проекты</td></tr>
                 <tr><td>Диск 0 Раздел 5: WinRE</td><td>884 МБ</td><td>NTFS</td><td>Среда восстановления системы</td></tr>
               </tbody>
@@ -746,7 +746,7 @@
           <div class="win-Box">
             <div class="win-Title">
               <span>🌐 Первичная настройка Windows 11 (OOBE)</span>
-              <span style="font-size:11px; color:#fca5a5;">Требуется сеть</span>
+              <span style="font-size:11px; color:var(--error);">Требуется сеть</span>
             </div>
             <div class="error-AlertBox">
               <strong>⛔ «Давайте подключим вас к сети» — Кнопка «Далее» неактивна</strong>
@@ -767,12 +767,12 @@
           <div class="win-Box">
             <div class="win-Title">
               <span>👤 Локальный профиль «Student-Admin» и установка драйверов</span>
-              <span style="font-size:11px; color:#6ee7b7;">${labProgress.resolved_faults.includes("OOBE_BYPASSNRO") ? "OOBE решено ✓" : "Сбой OOBE отключён"}</span>
+              <span style="font-size:11px; color:var(--success);">${labProgress.resolved_faults.includes("OOBE_BYPASSNRO") ? "OOBE решено ✓" : "Сбой OOBE отключён"}</span>
             </div>
-            <p style="font-size:11.5px; color:#cbd5e1; margin-bottom:8px;">
+            <p style="font-size:11.5px; color:var(--text-secondary); margin-bottom:8px;">
               В учебном образе доступен локальный профиль. Отметьте базовые драйверы для инсталляции перед запуском рабочего стола:
             </p>
-            <div style="display:flex; flex-direction:column; gap:5px; font-size:11.5px; color:#e2e8f0;">
+            <div style="display:flex; flex-direction:column; gap:5px; font-size:11.5px; color:var(--text-primary);">
               <label><input type="checkbox" ${selectedDrivers.includes("chipset") ? "checked" : ""} onchange="toggleDriver('chipset',this.checked)" /> Драйвер чипсета Intel Z790 INF & Management Engine</label>
               <label><input type="checkbox" ${selectedDrivers.includes("gpu") ? "checked" : ""} onchange="toggleDriver('gpu',this.checked)" /> Графический драйвер WDDM 3.1 для дискретной видеокарты (#part-gpu)</label>
               <label><input type="checkbox" ${selectedDrivers.includes("network") ? "checked" : ""} onchange="toggleDriver('network',this.checked)" /> Драйвер контроллера NVMe PCIe 4.0 и сетевого адаптера 2.5G LAN</label>
@@ -795,11 +795,11 @@
         <div class="win11-Desktop">
           <div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-              <span style="font-size:13px; font-weight:700; color:#fff;">🪟 ${winEdition} • Пользователь: Student-Admin</span>
-              <span style="font-size:10.5px; background:rgba(16,185,129,0.3); border:1px solid #10b981; padding:2px 8px; border-radius:99px; color:#a7f3d0;">Установка завершена ✓</span>
+              <span style="font-size:13px; font-weight:700; color:var(--text-primary);">🪟 ${winEdition} • Пользователь: Student-Admin</span>
+              <span style="font-size:10.5px; background:var(--success-bg); border:1px solid var(--success); padding:2px 8px; border-radius:99px; color:var(--success);">Установка завершена ✓</span>
             </div>
-            <div style="background:rgba(15,23,42,0.88); border:1px solid rgba(148,163,184,0.32); border-radius:8px; padding:10px; font-size:11px; line-height:1.5;">
-              <b style="color:#38bdf8;">Отчет по устраненным проблемам и конфигурации системы:</b><br/>
+            <div style="background:var(--bg-card); border:1px solid var(--border-default); border-radius:8px; padding:10px; font-size:11px; line-height:1.5;">
+              <b style="color:var(--text-accent);">Отчет по устраненным проблемам и конфигурации системы:</b><br/>
               ${Object.entries(faultNames).filter(([key])=>curriculumVersion===2||!['INSUFFICIENT_SPACE','BOOT_ORDER'].includes(key)).map(([key, label]) => `${labProgress.resolved_faults.includes(key) ? '✓' : '○'} ${label}: ${labProgress.resolved_faults.includes(key) ? 'решено' : 'не отработано'}<br/>`).join('')}
               ${curriculumVersion===2?`Мини-тесты: ${['preflight','handoff'].filter(quizPassed).length} / 2 · Неверных ответов: ${quizMistakes} · Ошибок диагностики: ${diagnosticMistakes}<br/>`:'Пройдено по предыдущей программе. «Перезапустить этап» откроет 6 неисправностей и 2 теста.<br/>'}
               Системный раздел C: ${cDriveSizeGb} ГБ · Данные D: ${511 - cDriveSizeGb} ГБ<br/>
@@ -908,9 +908,9 @@
     monitorScreenContent.innerHTML = `
       <div class="win-Box">
         <div class="win-Title">⏳ Установка ${winEdition} на Диск C: (${cDriveSizeGb} ГБ)</div>
-        <div style="font-size:11.5px; line-height:1.75; margin-bottom:10px; color:#cbd5e1;">
+        <div style="font-size:11.5px; line-height:1.75; margin-bottom:10px; color:var(--text-secondary);">
           <div>✓ 1. Форматирование разделов EFI (FAT32) и C:/D: (NTFS) — Выполнено</div>
-          <div style="color:#38bdf8; font-weight:600;">↻ 2. Запись системных файлов на #part-ssd (<span id="winPctText">0%</span>)</div>
+          <div style="color:var(--text-accent); font-weight:600;">↻ 2. Запись системных файлов на #part-ssd (<span id="winPctText">0%</span>)</div>
           <div>• 3. Регистрация загрузчика Windows Boot Manager в UEFI NVRAM</div>
         </div>
         <div class="progress-Track" style="height:12px;">
@@ -991,7 +991,7 @@
               <strong>Носитель прошивки</strong>
               USB_FAT32: Z790_V240.ROM
             </div>
-            <div class="uefi-Card" style="border-color:#f59e0b;">
+            <div class="uefi-Card" style="border-color:var(--warning);">
               <strong>Целевая микросхема</strong>
               #bios-chip (SPI Flash 128 Мбит)
             </div>
@@ -1005,12 +1005,12 @@
       setBanner('✅ Микрокод UEFI BIOS обновлен до версии v2.40! Переходите к Конструктору Windows 11.', 'success');
       monitorScreenContent.innerHTML = `
         <div class="uefi-Box">
-          <div class="uefi-Header" style="color:#6ee7b7; border-color:#10b981;">
+          <div class="uefi-Header" style="color:var(--success); border-color:var(--success);">
             <span>M-FLASH UPDATE COMPLETE (100%)</span>
             <span>BIOS v2.40</span>
           </div>
-          <div class="uefi-Card" style="border-color:#10b981;">
-            <strong style="color:#6ee7b7;">Микрокод успешно перезаписан:</strong>
+          <div class="uefi-Card" style="border-color:var(--success);">
+            <strong style="color:var(--success);">Микрокод успешно перезаписан:</strong>
             Шина <code>#data-bus-bios</code> передала образ прошивки с USB-флешки в энергонезависимую память <code>#bios-chip</code>.
           </div>
         </div>
@@ -1030,7 +1030,7 @@
     monitorScreenContent.innerHTML = `
       <div class="uefi-Box">
         <div class="uefi-Header"><span>ПЕРЕЗАПИСЬ SPI FLASH (#bios-chip)</span><span id="bPct">0%</span></div>
-        <p style="font-size:11.5px; color:#fde68a; margin-bottom:10px;">⚠️ Не отключайте питание! Импульсы идут по шине #data-bus-bios на 3D-плате справа...</p>
+        <p style="font-size:11.5px; color:var(--warning); margin-bottom:10px;">⚠️ Не отключайте питание! Импульсы идут по шине #data-bus-bios на 3D-плате справа...</p>
         <div class="progress-Track" style="height:12px;"><div class="progress-Fill" id="bBar" style="width:0%;"></div></div>
       </div>
       <button class="sim-Btn" disabled>Прошивка...</button>

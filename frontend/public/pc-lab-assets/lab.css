@@ -1,22 +1,23 @@
-
     :root {
-      --bg-dark: #050811;
-      --panel-bg: rgba(15, 23, 42, 0.94);
-      --border-subtle: rgba(148, 163, 184, 0.18);
-      --accent-cyan: #38bdf8;
-      --accent-emerald: #10b981;
-      --accent-amber: #f59e0b;
-      --accent-red: #ef4444;
-      --accent-purple: #a855f7;
-      --text-main: #f8fafc;
-      --text-muted: #94a3b8;
+      --bg-dark: var(--bg-base);
+      --panel-bg: var(--bg-glass-strong);
+      --accent-ui: var(--text-accent);
+      --accent-emerald: var(--success);
+      --accent-amber: var(--warning);
+      --accent-red: var(--error);
+      --text-main: var(--text-primary);
+      --text-muted: var(--text-secondary);
+      --success-bg: color-mix(in srgb, var(--success) 10%, var(--bg-base));
+      --error-bg: color-mix(in srgb, var(--error) 9%, var(--bg-base));
+      --warning-bg: color-mix(in srgb, var(--warning) 10%, var(--bg-base));
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background: radial-gradient(circle at 50% 35%, #162238 0%, var(--bg-dark) 78%);
+      background: var(--bg-base);
       color: var(--text-main);
+      accent-color: var(--accent);
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
       min-height: 100vh;
       display: flex;
@@ -28,10 +29,10 @@
     .lab-App {
       width: 100%;
       max-width: 1400px;
-      background: rgba(9, 13, 24, 0.88);
+      background: var(--bg-base);
       border: 1px solid var(--border-subtle);
       border-radius: 18px;
-      box-shadow: 0 28px 80px rgba(0, 0, 0, 0.85);
+      box-shadow: var(--glass-shadow);
       overflow: hidden;
       display: grid;
       grid-template-rows: auto 1fr;
@@ -51,7 +52,7 @@
 
     .mode-Tabs {
       display: flex;
-      background: rgba(2, 6, 23, 0.78);
+      background: var(--bg-secondary);
       padding: 4px;
       border-radius: 10px;
       border: 1px solid var(--border-subtle);
@@ -73,14 +74,14 @@
 
     .mode-Tab:hover {
       color: var(--text-main);
-      background: rgba(30, 41, 59, 0.55);
+      background: var(--bg-card-hover);
     }
 
     .mode-Tab.is-active {
-      background: rgba(56, 189, 248, 0.18);
-      color: #fff;
-      border-color: rgba(56, 189, 248, 0.48);
-      box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+      background: var(--accent-bg);
+      color: var(--text-primary);
+      border-color: var(--border-accent);
+      box-shadow: var(--glass-shadow);
     }
 
     .lab-Actions {
@@ -90,9 +91,9 @@
     }
 
     .btn-Action {
-      background: rgba(30, 41, 59, 0.88);
+      background: var(--bg-card);
       color: var(--text-main);
-      border: 1px solid rgba(148, 163, 184, 0.3);
+      border: 1px solid var(--border-glass-strong);
       padding: 7px 12px;
       border-radius: 8px;
       font-size: 11.5px;
@@ -102,9 +103,9 @@
     }
 
     .btn-Action:hover, .btn-Action.is-active {
-      border-color: var(--accent-cyan);
-      background: rgba(56, 189, 248, 0.2);
-      box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+      border-color: var(--accent-ui);
+      background: var(--accent-bg);
+      box-shadow: var(--glass-shadow);
     }
 
     /* ОСНОВНАЯ СЕТКА (Сайдбар + Центральная Сцена + Инспектор) */
@@ -116,7 +117,7 @@
 
     /* ЛЕВАЯ ПАНЕЛЬ */
     .parts-Sidebar {
-      background: rgba(15, 23, 42, 0.72);
+      background: var(--bg-sidebar);
       border-right: 1px solid var(--border-subtle);
       padding: 14px;
       display: flex;
@@ -138,8 +139,8 @@
       justify-content: space-between;
       width: 100%;
       text-align: left;
-      background: rgba(30, 41, 59, 0.45);
-      border: 1px solid rgba(148, 163, 184, 0.12);
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
       color: var(--text-main);
       padding: 8px 10px;
       border-radius: 8px;
@@ -149,40 +150,40 @@
     }
 
     .part-Btn:hover {
-      background: rgba(51, 65, 85, 0.65);
-      border-color: rgba(148, 163, 184, 0.3);
+      background: var(--bg-card-hover);
+      border-color: var(--border-glass-strong);
     }
 
     .part-Btn.is-selected {
-      background: rgba(56, 189, 248, 0.2);
-      border-color: var(--accent-cyan);
-      color: #fff;
+      background: var(--accent-bg);
+      border-color: var(--accent-ui);
+      color: var(--text-primary);
       font-weight: 600;
     }
 
     .part-Btn.is-installed {
-      background: rgba(16, 185, 129, 0.14);
-      border-color: rgba(16, 185, 129, 0.42);
-      color: #a7f3d0;
+      background: var(--success-bg);
+      border-color: var(--success);
+      color: var(--success);
     }
 
     .part-Badge {
       font-size: 10px;
       color: var(--text-muted);
-      background: rgba(15, 23, 42, 0.85);
+      background: var(--bg-secondary);
       padding: 2px 6px;
       border-radius: 4px;
       font-family: monospace;
     }
 
     .part-Btn.is-selected .part-Badge {
-      background: var(--accent-cyan);
-      color: #020617;
+      background: var(--accent);
+      color: #fffdf9;
       font-weight: 700;
     }
 
     .build-ProgressBox {
-      background: rgba(2, 6, 23, 0.6);
+      background: var(--bg-card);
       border: 1px solid var(--border-subtle);
       border-radius: 10px;
       padding: 10px 12px;
@@ -200,7 +201,7 @@
     .progress-Track {
       width: 100%;
       height: 7px;
-      background: rgba(30, 41, 59, 0.9);
+      background: var(--bg-secondary);
       border-radius: 99px;
       overflow: hidden;
     }
@@ -208,15 +209,15 @@
     .progress-Fill {
       height: 100%;
       width: 100%;
-      background: linear-gradient(90deg, var(--accent-cyan), var(--accent-emerald));
+      background: var(--accent-gradient);
       transition: width 0.35s ease;
     }
 
     /* Блок настройки ошибок для Конструктора Windows (в сайдбаре) */
     .fault-ConfigBox {
       margin-top: 8px;
-      background: rgba(127, 29, 29, 0.16);
-      border: 1px solid rgba(239, 68, 68, 0.35);
+      background: var(--error-bg);
+      border: 1px solid color-mix(in srgb, var(--error) 40%, var(--border-default));
       border-radius: 10px;
       padding: 10px;
       display: none;
@@ -228,7 +229,7 @@
       font-size: 10.5px;
       font-weight: 700;
       text-transform: uppercase;
-      color: #fca5a5;
+      color: var(--error);
       margin-bottom: 6px;
     }
 
@@ -237,7 +238,7 @@
       align-items: center;
       gap: 7px;
       font-size: 11px;
-      color: #e2e8f0;
+      color: var(--text-primary);
       margin-bottom: 5px;
       cursor: pointer;
     }
@@ -256,14 +257,14 @@
       top: 12px;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(15, 23, 42, 0.94);
-      border: 1px solid var(--accent-cyan);
+      background: var(--bg-glass-strong);
+      border: 1px solid var(--accent-ui);
       padding: 8px 16px;
       border-radius: 99px;
       font-size: 12px;
       font-weight: 500;
       color: var(--text-main);
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+      box-shadow: var(--glass-shadow);
       z-index: 30;
       pointer-events: none;
       transition: all 0.25s ease;
@@ -272,14 +273,14 @@
 
     .builder-Banner.is-error {
       border-color: var(--accent-red);
-      background: rgba(69, 10, 10, 0.95);
-      color: #fecaca;
+      background: var(--error-bg);
+      color: var(--error);
     }
 
     .builder-Banner.is-success {
       border-color: var(--accent-emerald);
-      background: rgba(6, 78, 59, 0.95);
-      color: #a7f3d0;
+      background: var(--success-bg);
+      color: var(--success);
     }
 
     /* ================================================================= */
@@ -301,11 +302,11 @@
 
     .part-xray .sub-layer {
       opacity: 0.82;
-      filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.45));
+      filter: drop-shadow(0 0 10px var(--border-accent));
     }
 
     .dissect-guide {
-      stroke: var(--accent-cyan);
+      stroke: var(--accent-ui);
       stroke-width: 1.4;
       stroke-dasharray: 5 5;
       opacity: 0;
@@ -358,8 +359,8 @@
     .is-builder-mode #builder-dropzones { display: block; }
 
     .slot-zone {
-      fill: rgba(56, 189, 248, 0.08);
-      stroke: rgba(56, 189, 248, 0.55);
+      fill: color-mix(in srgb, var(--accent-ui) 8%, transparent);
+      stroke: var(--accent-ui);
       stroke-width: 1.5;
       stroke-dasharray: 5 4;
       cursor: pointer;
@@ -367,19 +368,19 @@
     }
 
     .slot-zone:hover {
-      fill: rgba(56, 189, 248, 0.26);
-      stroke: #fff;
+      fill: color-mix(in srgb, var(--accent-ui) 26%, transparent);
+      stroke: var(--text-primary);
       stroke-width: 2;
     }
 
     .slot-zone.is-hinted {
-      fill: rgba(16, 185, 129, 0.28) !important;
+      fill: color-mix(in srgb, var(--success) 28%, transparent) !important;
       stroke: var(--accent-emerald) !important;
       stroke-width: 2.5 !important;
     }
 
     .slot-zone.is-wrong {
-      fill: rgba(239, 68, 68, 0.38) !important;
+      fill: color-mix(in srgb, var(--error) 38%, transparent) !important;
       stroke: var(--accent-red) !important;
     }
 
@@ -395,7 +396,7 @@
     .is-exploded #case-glass-panel{ transform: translate(-300px, 150px); opacity: 0.25; }
 
     .guide-line {
-      stroke: var(--accent-cyan);
+      stroke: var(--accent-ui);
       stroke-width: 1.3;
       stroke-dasharray: 5 5;
       opacity: 0;
@@ -418,11 +419,11 @@
       left: 14px;
       bottom: 14px;
       width: 525px;
-      background: rgba(9, 13, 24, 0.96);
+      background: var(--bg-glass-strong);
       backdrop-filter: blur(16px);
-      border: 2px solid #334155;
+      border: 2px solid var(--border-default);
       border-radius: 14px;
-      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.88), 0 0 28px rgba(56, 189, 248, 0.16);
+      box-shadow: var(--glass-shadow);
       overflow: hidden;
       z-index: 25;
       display: none;
@@ -436,8 +437,8 @@
       justify-content: space-between;
       align-items: center;
       padding: 8px 14px;
-      background: #1e293b;
-      border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-glass-strong);
       font-size: 11.5px;
       font-weight: 600;
     }
@@ -465,13 +466,13 @@
 
     .uefi-Box {
       font-family: 'JetBrains Mono', 'Consolas', monospace;
-      color: #e2e8f0;
+      color: var(--text-primary);
     }
 
     .uefi-Header {
       display: flex;
       justify-content: space-between;
-      border-bottom: 1px solid rgba(245, 158, 11, 0.45);
+      border-bottom: 1px solid color-mix(in srgb, var(--warning) 45%, var(--border-default));
       padding-bottom: 7px;
       margin-bottom: 10px;
       color: var(--accent-amber);
@@ -487,8 +488,8 @@
     }
 
     .uefi-Card {
-      background: rgba(30, 41, 59, 0.65);
-      border: 1px solid rgba(148, 163, 184, 0.22);
+      background: var(--bg-card);
+      border: 1px solid var(--border-glass-strong);
       padding: 8px 10px;
       border-radius: 6px;
       font-size: 11px;
@@ -497,14 +498,14 @@
 
     .uefi-Card strong {
       display: block;
-      color: var(--accent-cyan);
+      color: var(--accent-ui);
       margin-bottom: 3px;
     }
 
     /* Блоки Конструктора Windows и Диагностики Ошибок */
     .win-Box {
-      background: linear-gradient(145deg, #0f172a 0%, #172554 100%);
-      border: 1px solid rgba(96, 165, 250, 0.38);
+      background: var(--bg-card);
+      border: 1px solid var(--border-default);
       border-radius: 10px;
       padding: 13px;
     }
@@ -512,7 +513,7 @@
     .win-Title {
       font-size: 13.5px;
       font-weight: 700;
-      color: #93c5fd;
+      color: var(--text-accent);
       margin-bottom: 8px;
       display: flex;
       justify-content: space-between;
@@ -520,18 +521,18 @@
     }
 
     .error-AlertBox {
-      background: rgba(127, 29, 29, 0.35);
-      border: 1px solid #ef4444;
+      background: var(--error-bg);
+      border: 1px solid var(--error);
       border-radius: 8px;
       padding: 10px 12px;
       margin: 8px 0;
       font-size: 11.5px;
       line-height: 1.45;
-      color: #fecaca;
+      color: var(--error);
     }
 
     .error-AlertBox strong {
-      color: #f87171;
+      color: var(--error);
       display: block;
       margin-bottom: 4px;
       font-size: 12px;
@@ -546,9 +547,9 @@
 
     .sol-Btn {
       text-align: left;
-      background: rgba(15, 23, 42, 0.88);
-      border: 1px solid var(--accent-cyan);
-      color: #f8fafc;
+      background: var(--bg-card);
+      border: 1px solid var(--accent-ui);
+      color: var(--text-primary);
       padding: 8px 11px;
       border-radius: 7px;
       font-size: 11.5px;
@@ -557,19 +558,19 @@
     }
 
     .sol-Btn:hover {
-      background: rgba(56, 189, 248, 0.22);
-      border-color: #fff;
+      background: var(--accent-bg);
+      border-color: var(--text-primary);
     }
 
     /* Консоль Shift + F10 (CMD / Diskpart / Regedit) */
     .cmd-Terminal {
-      background: #020617;
-      border: 1px solid #475569;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-default);
       border-radius: 7px;
       padding: 10px;
       font-family: 'Consolas', 'JetBrains Mono', monospace;
       font-size: 11px;
-      color: #cbd5e1;
+      color: var(--text-secondary);
       margin-top: 8px;
       line-height: 1.5;
     }
@@ -577,15 +578,15 @@
     .cmd-Header {
       display: flex;
       justify-content: space-between;
-      color: #94a3b8;
-      border-bottom: 1px solid #1e293b;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--bg-secondary);
       padding-bottom: 4px;
       margin-bottom: 6px;
       font-size: 10px;
     }
 
-    .cmd-Line { color: #38bdf8; }
-    .cmd-Success { color: #10b981; font-weight: 700; }
+    .cmd-Line { color: var(--text-accent); }
+    .cmd-Success { color: var(--success); font-weight: 700; }
 
     .partition-Table {
       width: 100%;
@@ -595,23 +596,23 @@
     }
 
     .partition-Table th, .partition-Table td {
-      border: 1px solid rgba(148, 163, 184, 0.25);
+      border: 1px solid var(--border-default);
       padding: 5px 7px;
       text-align: left;
     }
 
     .partition-Table th {
-      background: rgba(30, 41, 59, 0.9);
-      color: var(--accent-cyan);
+      background: var(--bg-secondary);
+      color: var(--accent-ui);
     }
 
     .sim-Btn {
       width: 100%;
       padding: 9px 14px;
       border-radius: 8px;
-      border: 1px solid var(--accent-cyan);
-      background: rgba(56, 189, 248, 0.22);
-      color: #fff;
+      border: 1px solid var(--accent-ui);
+      background: var(--accent-bg);
+      color: var(--text-primary);
       font-size: 12px;
       font-weight: 600;
       cursor: pointer;
@@ -619,8 +620,8 @@
     }
 
     .sim-Btn:hover:not(:disabled) {
-      background: rgba(56, 189, 248, 0.38);
-      box-shadow: 0 0 14px rgba(56, 189, 248, 0.35);
+      background: var(--bg-card-hover);
+      box-shadow: var(--glass-shadow-hover);
     }
 
     .sim-Btn:disabled {
@@ -628,34 +629,34 @@
       cursor: not-allowed;
     }
 
-    .sim-Btn.is-amber { border-color: var(--accent-amber); background: rgba(245, 158, 11, 0.24); }
-    .sim-Btn.is-emerald { border-color: var(--accent-emerald); background: rgba(16, 185, 129, 0.25); }
+    .sim-Btn.is-amber { border-color: var(--accent-amber); background: var(--warning-bg); }
+    .sim-Btn.is-emerald { border-color: var(--accent-emerald); background: var(--success-bg); }
 
     .win11-Desktop {
-      background: radial-gradient(circle at 50% 35%, #2563eb 0%, #1e1b4b 65%, #090d16 100%);
+      background: var(--accent-gradient-subtle);
       border-radius: 9px;
       padding: 14px;
       min-height: 260px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      border: 1px solid rgba(147, 197, 253, 0.45);
+      border: 1px solid var(--border-accent);
     }
 
     .win11-Taskbar {
-      background: rgba(15, 23, 42, 0.85);
+      background: var(--bg-secondary);
       border-radius: 6px;
       padding: 6px 12px;
       display: flex;
       justify-content: center;
       gap: 12px;
       font-size: 11px;
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      border: 1px solid var(--border-glass-strong);
     }
 
     /* ПРАВАЯ КОЛОНКА: ИНСПЕКТОР И БАЗА РЕШЕНИЙ */
     .inspector-Panel {
-      background: rgba(15, 23, 42, 0.8);
+      background: var(--bg-sidebar);
       border-left: 1px solid var(--border-subtle);
       padding: 16px;
       display: flex;
@@ -668,9 +669,9 @@
       display: inline-block;
       font-size: 10.5px;
       font-family: monospace;
-      color: var(--accent-cyan);
-      background: rgba(56, 189, 248, 0.12);
-      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: var(--accent-ui);
+      background: var(--accent-bg);
+      border: 1px solid var(--border-accent);
       padding: 3px 8px;
       border-radius: 5px;
       margin-bottom: 6px;
@@ -693,7 +694,7 @@
 
     .subparts-Box {
       margin-top: 10px;
-      background: rgba(2, 6, 23, 0.58);
+      background: var(--bg-card);
       border: 1px solid var(--border-subtle);
       border-radius: 10px;
       padding: 11px;
@@ -703,7 +704,7 @@
       font-size: 10.5px;
       text-transform: uppercase;
       letter-spacing: 0.06em;
-      color: var(--accent-cyan);
+      color: var(--accent-ui);
       margin-bottom: 6px;
     }
 
@@ -713,13 +714,13 @@
       flex-direction: column;
       gap: 5px;
       font-size: 11.5px;
-      color: #cbd5e1;
+      color: var(--text-secondary);
     }
-    .subparts-Ul li::before { content: "• "; color: var(--accent-cyan); font-weight: bold; }
+    .subparts-Ul li::before { content: "• "; color: var(--accent-ui); font-weight: bold; }
 
     .lab-RoleBox {
-      background: rgba(16, 185, 129, 0.08);
-      border: 1px solid rgba(16, 185, 129, 0.28);
+      background: var(--success-bg);
+      border: 1px solid color-mix(in srgb, var(--success) 28%, transparent);
       border-radius: 10px;
       padding: 11px;
       font-size: 11.5px;
@@ -733,7 +734,7 @@
       margin-bottom: 4px;
     }
   /* The reference lives in its own document; resets cannot affect the host site. */
-body {display:block; padding:0; min-height:0; background:#050811;}
+body {display:block; padding:0; min-height:0; background:var(--bg-base);}
 .lab-App {max-width:none; border-radius:0; box-shadow:none;}
 .lab-Body {grid-template-columns:220px minmax(0,1fr) 260px; min-height:740px;}
 .lab-Body > * {min-width:0;}
@@ -743,9 +744,9 @@ body {display:block; padding:0; min-height:0; background:#050811;}
 .virtual-MonitorModal {position:static; width:100%; grid-row:3; box-shadow:none;}
 #camera-rig {transform:translate(0,0) scale(1) !important;}
 #case-glass-panel, .guide-line, .dissect-guide, #callouts-layer {pointer-events:none;}
-.slot-zone:focus-visible, button:focus-visible, input:focus-visible {outline:3px solid #38bdf8;outline-offset:3px;}
-.lab-note {font-size:12px;line-height:1.6;padding:10px;color:#cbd5e1;overflow-wrap:anywhere;}
-.lab-note a {color:#7dd3fc;}
+.slot-zone:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible {outline:3px solid var(--text-accent);outline-offset:3px;}
+.lab-note {font-size:12px;line-height:1.6;padding:10px;color:var(--text-secondary);overflow-wrap:anywhere;}
+.lab-note a {color:var(--text-accent);}
 button, code, .spec-Val, .cmd-Terminal {overflow-wrap:anywhere;}
 .partition-Table {table-layout:fixed;}
 .partition-Table th,.partition-Table td {overflow-wrap:anywhere;}
@@ -775,7 +776,7 @@ button, code, .spec-Val, .cmd-Terminal {overflow-wrap:anywhere;}
 
 .setup-locales {display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px;font-size:12px;}
 .setup-locales label {display:grid;gap:6px;flex:1;min-width:120px;}
-.setup-locales select {padding:8px;background:#172338;color:#f8fafc;border:1px solid #475569;border-radius:6px;}
+.setup-locales select {padding:8px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border-default);border-radius:6px;}
 /* The page scrolls as one surface, including long setup tables on phones. */
 .monitor-ScreenBody {min-height:0;max-height:none;overflow:visible;}
 
@@ -785,5 +786,10 @@ button, code, .spec-Val, .cmd-Terminal {overflow-wrap:anywhere;}
 .has-hardware3d .canvas-Stage>svg{display:none!important;}
 #hardwareFallback{grid-row:2;}
 .has-hardware3d[data-mode="bios"] #hardwareFrame,.has-hardware3d[data-mode="windows"] #hardwareFrame{grid-row:4;}
-.lab-quiz{border:1px solid #395c69;background:#111f2c;border-radius:10px;padding:16px;margin:14px 0;color:#dce6ef;font-size:12px;}
-.lab-quiz h3{font-size:15px;margin:0 0 8px}.lab-quiz>p{color:#9fbbc8;line-height:1.6}.lab-quiz fieldset{border:0;padding:12px 0;margin:8px 0;border-top:1px solid #334653;min-width:0}.lab-quiz legend{font-weight:600;line-height:1.6;float:left;width:100%;margin:8px 0}.quiz-option{clear:both;display:flex;gap:9px;align-items:baseline;line-height:1.5;padding:9px;border:1px solid #354b5a;margin:6px 0;border-radius:6px;cursor:pointer}.quiz-option.selected{border-color:#6faaa2;background:#243a42}.quiz-feedback{line-height:1.6;padding:10px;border-radius:6px}.quiz-feedback.correct{color:#b8edd3;background:#173d32}.quiz-feedback.incorrect{color:#ffd4b5;background:#4a3023}
+.lab-quiz{border:1px solid var(--border-accent);background:var(--bg-card);border-radius:10px;padding:16px;margin:14px 0;color:var(--text-primary);font-size:12px;}
+.lab-quiz h3{font-size:15px;margin:0 0 8px}.lab-quiz>p{color:var(--text-secondary);line-height:1.6}.lab-quiz fieldset{border:0;padding:12px 0;margin:8px 0;border-top:1px solid var(--border-default);min-width:0}.lab-quiz legend{font-weight:600;line-height:1.6;float:left;width:100%;margin:8px 0}.quiz-option{clear:both;display:flex;gap:9px;align-items:baseline;line-height:1.5;padding:9px;border:1px solid var(--border-default);margin:6px 0;border-radius:6px;cursor:pointer}.quiz-option.selected{border-color:var(--border-accent);background:var(--accent-bg)}.quiz-feedback{line-height:1.6;padding:10px;border-radius:6px}.quiz-feedback.correct{color:var(--success);background:var(--success-bg)}.quiz-feedback.incorrect{color:var(--error);background:var(--error-bg)}
+
+/* Neutral annotations remain readable over the light and dark fallback diagrams. */
+.part-layer-label, #builder-dropzones text, #iso-monitor-status {fill:var(--text-accent);}
+.sim-Btn.is-amber {color:var(--warning);}
+.sim-Btn.is-emerald {color:var(--success);}

@@ -78,7 +78,7 @@ function mountViewer() {
     controls.maxDistance = 24;
     controls.maxPolarAngle = Math.PI * .95;
     controls.target.set(0, 0, 0);
-    const grid = new T.GridHelper(20, 40, '#354450', '#1d2a32');
+    const grid = new T.GridHelper(20, 40, '#9d7959', '#b7936d');
     grid.position.y = -3.5;
     grid.material.transparent = true;
     grid.material.opacity = .3;
@@ -95,7 +95,7 @@ function mountViewer() {
         home: T.Vector3;
         move: T.Vector3;
     }[] = [], slots: T.Mesh[] = [];
-    let radius = 4, distance = 12, visible = true, hidden = document.hidden, frame = 0, last = 0, dirty = true, light = false, failed = false;
+    let radius = 4, distance = 12, visible = true, hidden = document.hidden, frame = 0, last = 0, dirty = true, failed = false;
     const motion = matchMedia('(prefers-reduced-motion: reduce)');
     let focusLayer: number | null = null;
     const layouts: Record<PartId, {
@@ -173,7 +173,7 @@ function mountViewer() {
                 const source = models.find(m => m.id === id);
                 const size = source ? new T.Box3().setFromObject(source.hardware.root).getSize(new T.Vector3()).max(new T.Vector3(.4, .35, .35)) : new T.Vector3(3.7, 5.9, .1);
                 const geo = new T.BoxGeometry(size.x, size.y, size.z);
-                const mat = new T.MeshBasicMaterial({ color: '#78d8c0', transparent: true, opacity: .13, depthWrite: false });
+                const mat = new T.MeshBasicMaterial({ color: '#b7936d', transparent: true, opacity: .13, depthWrite: false });
                 const slot = new T.Mesh(geo, mat);
                 slot.position.set(...layout.p as [
                     number,
@@ -223,7 +223,8 @@ function mountViewer() {
             slot.visible = !state.installed.includes(slot.userData.slot);
             const mat = slot.material as T.MeshBasicMaterial;
             mat.opacity = slot.userData.slot === state.held ? .26 : .055;
-            mat.color.set(slot.userData.slot === state.held ? '#84efc8' : '#67798b');
+            const palette = getComputedStyle(document.documentElement);
+            mat.color.set(palette.getPropertyValue(slot.userData.slot === state.held ? '--text-accent' : '--text-tertiary').trim());
         }
     }
     function updateText() {
@@ -472,7 +473,19 @@ function mountViewer() {
     function zoom(scale: number) { cameraGoal = targetGoal = null; camera.position.sub(controls.target).multiplyScalar(scale).clampLength(controls.minDistance, controls.maxDistance).add(controls.target); invalidate(); }
     el('zoomIn').onclick = () => zoom(.82);
     el('zoomOut').onclick = () => zoom(1.2);
-    el('theme').onclick = () => { light = !light; root.classList.toggle('light', light); el('theme').textContent = light ? 'Тёмный фон' : 'Светлый фон'; grid.material.opacity = light ? .15 : .3; invalidate(); };
+    function syncSceneTheme() {
+        const light = document.documentElement.dataset.theme !== 'dark';
+        el('theme').textContent = light ? 'Тёмный фон' : 'Светлый фон';
+        el('theme').title = 'Меняет фон 3D-просмотра. Тема всего практикума — в верхней панели.';
+        grid.material.opacity = light ? .18 : .3;
+        updateVisibility();
+        invalidate();
+    }
+    new MutationObserver(syncSceneTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    syncSceneTheme();
+    el('theme').onclick = () => {
+        document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    };
     renderer.domElement.addEventListener('wheel', () => { cameraGoal = targetGoal = null; }, { passive: true });
     el('layers').onclick = event => {
         const b = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-layer]');
