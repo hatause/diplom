@@ -198,7 +198,7 @@ class TestService:
                 continue
 
             correct_ans_parsed = parse_db_json(question.correctAnswer) if question.correctAnswer else []
-            is_correct = self._check_answer(ans.userAnswer, correct_ans_parsed)
+            is_correct = self._check_answer(ans.userAnswer, correct_ans_parsed, question.type)
             if is_correct:
                 correct_count += 1
             else:
@@ -275,7 +275,14 @@ class TestService:
         await achievements_service.award(db, user_id)
         return updated_attempt
 
-    def _check_answer(self, user_answer: Any, correct_answer: Any) -> bool:
+    def _check_answer(self, user_answer: Any, correct_answer: Any, question_type: str) -> bool:
+        if question_type in ('single_choice', 'multiple_choice'):
+            # Option labels are identifiers: Co and CO can be different answers.
+            # Multiple selections remain independent of the order of clicks.
+            selected = user_answer if isinstance(user_answer, list) else [user_answer]
+            expected = correct_answer if isinstance(correct_answer, list) else [correct_answer]
+            return sorted(str(value) for value in selected) == sorted(str(value) for value in expected)
+
         def normalize(v: Any) -> List[str]:
             if isinstance(v, list):
                 return sorted([str(x).strip().lower() for x in v])

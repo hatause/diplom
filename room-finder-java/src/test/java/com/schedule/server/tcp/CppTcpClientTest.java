@@ -142,10 +142,7 @@ class CppTcpClientTest {
 
         CppTcpClient client = new CppTcpClient("localhost", serverPort);
 
-        // JsonNode парсинг не упадёт на «NOT_A_JSON{{{», но результат может быть некорректным
-        // В зависимости от ObjectMapper поведение может отличаться — проверяем что не выбрасывает NPE
-        assertDoesNotThrow(() -> client.send(makeRequest(1, "test", 8, 45)),
-                "Клиент не должен падать с NPE при невалидном JSON");
+        assertThrows(RuntimeException.class, () -> client.send(makeRequest(1, "test", 8, 45)));
     }
 
     /**

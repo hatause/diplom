@@ -46,7 +46,7 @@ async def require_group_access(group_id: str, user_id: str, role: str | None = N
     group = await prisma.group.find_unique(where={'id': group_id}, include={'teachers': True})
     if not group:
         raise HTTPException(404, 'Группа не найдена')
-    if role == 'ADMIN' or any(t.id == user_id for t in group.teachers or []):
+    if role == 'ADMIN' or (role == 'TEACHER' and any(t.id == user_id for t in group.teachers or [])):
         return group
     if role == 'STUDENT':
         profile = await prisma.studentprofile.find_unique(where={'userId': user_id})
@@ -58,6 +58,16 @@ async def require_group_access(group_id: str, user_id: str, role: str | None = N
 async def require_lecture_access(lecture, user_id: str):
     if not lecture:
         raise HTTPException(404, 'Лекция не найдена')
-    if lecture.groupId and lecture.teacherId != user_id:
-        await require_group_access(lecture.groupId, user_id)
+    if lecture.groupId:
+        # Authorship and old GroupTeachers links survive role changes. They must
+        # not let a demoted student bypass their current group membership.
+        if lecture.teacherId == user_id:
+            user = await prisma.user.find_unique(where={'id': user_id})
+            if not user or not user.isActive:
+                raise HTTPException(401, 'Аккаунт недоступен')
+            if user.role in ('TEACHER', 'ADMIN'):
+                return lecture
+            await require_group_access(lecture.groupId, user_id, user.role)
+        else:
+            await require_group_access(lecture.groupId, user_id)
     return lecture

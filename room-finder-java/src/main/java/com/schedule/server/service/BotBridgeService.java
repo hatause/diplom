@@ -262,11 +262,14 @@ public class BotBridgeService {
             // Parse times
             LocalTime start = LocalTime.parse(request.getStartTime());
             LocalTime end = LocalTime.parse(request.getEndTime());
+            if (!end.isAfter(start)) {
+                throw new IllegalArgumentException("Время окончания должно быть позже начала");
+            }
 
             // Get current day of week (1=Monday, 7=Sunday)
             int dayOfWeek = TimeUtil.currentDayOfWeek();
             log.info("Found auditory: id={}, name={}", auditory.id(), auditory.name());
-            int deleted = auditoryJournalRepository.deleteById(auditory.id());
+            int deleted = auditoryJournalRepository.deleteByAudIdAndTime(auditory.id(), dayOfWeek, start, end);
             log.info("DELETE WHERE audId={}, day={}, start={}, end={}", auditory.id(), dayOfWeek, start, end);
             if (deleted > 0) {
                 log.info("cancelBooking: deleted {} record(s) for auditory {} (id={}), day={}, {}-{}",

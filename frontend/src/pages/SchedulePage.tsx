@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { errorText } from '@/api/companion';
 import { ErrorNotice } from '@/components/CompanionUI';
 import { api } from '@/api/client';
@@ -22,22 +22,31 @@ function ScheduleView() {
   const [status, setStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const request = useRef<AbortController | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
+    request.current?.abort();
+    const controller = new AbortController();
+    request.current = controller;
     setLoading(true);
     setError('');
     try {
       const endpoint = view === 'today' ? '/schedule/today' : '/schedule/week';
       const [schedRes, statusRes] = await Promise.all([
-        api.get(endpoint),
-        api.get('/schedule/status'),
+        api.get(endpoint, { signal: controller.signal }),
+        api.get('/schedule/status', { signal: controller.signal }),
       ]);
+      if (controller.signal.aborted) return;
       setData(schedRes.data.data);
       setStatus(statusRes.data.data);
-    } catch (e) { setError(errorText(e)); } finally { setLoading(false); }
-  };
+    } catch (e) {
+      if (!controller.signal.aborted) setError(errorText(e));
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
+    }
+  }, [view]);
 
-  useEffect(() => { load(); }, [view]);
+  useEffect(() => { void load(); return () => request.current?.abort(); }, [load]);
 
   const handleSync = async () => {
     await load();
@@ -74,7 +83,7 @@ function ScheduleView() {
               </button>
             ))}
           </div>
-          <button onClick={handleSync} className="p-2 rounded-xl glass" title="Обновить расписание">
+          <button onClick={handleSync} disabled={loading} className="p-2 rounded-xl glass" title="Обновить расписание">
             <RefreshCw size={18} style={{ color: 'var(--text-secondary)' }} />
           </button>
         </div>

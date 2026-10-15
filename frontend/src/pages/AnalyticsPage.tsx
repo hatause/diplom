@@ -26,11 +26,10 @@ export function AnalyticsPage() {
   }, []);
 
   if (loading) return <div className="space-y-4">{[...Array(4)].map((_, i) => <div key={i} className="skeleton h-64 rounded-2xl" />)}</div>;
+  if (error) return <ErrorNotice message={error} retry={() => window.location.reload()} />;
   if (!data) return null;
 
   const tooltipStyle = { background: 'var(--bg-glass-strong)', border: '1px solid var(--border-glass)', borderRadius: '12px', fontSize: '12px' };
-
-  if (error) return <ErrorNotice message={error} retry={() => window.location.reload()} />;
 
   return (
     <div className="space-y-6">

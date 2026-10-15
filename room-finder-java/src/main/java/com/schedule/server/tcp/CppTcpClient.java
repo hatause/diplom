@@ -153,10 +153,14 @@ public class CppTcpClient {
             log.debug("Received from C++ server: {}", responseJson);
 
             try {
-                return objectMapper.readTree(responseJson);
+                JsonNode response = objectMapper.readTree(responseJson);
+                if (response == null || !response.isObject()) {
+                    throw new IOException("Ответ C++ сервера должен быть JSON-объектом");
+                }
+                return response;
             } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
                 log.warn("Invalid JSON received from C++ server: {}", e.getMessage());
-                return objectMapper.createObjectNode();
+                throw new IOException("Некорректный JSON от C++ сервера", e);
             }
 
         } catch (IOException e) {

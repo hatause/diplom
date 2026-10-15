@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '@/api/client';
 import { errorText } from '@/api/companion';
@@ -15,71 +15,92 @@ export function LecturePage() {
   const [error, setError] = useState('');
   const [extractedText, setExtractedText] = useState('');
   const [generatedTest, setGeneratedTest] = useState<any>(null);
+  const request = useRef<AbortController | null>(null);
 
   useEffect(() => {
+    const controller = new AbortController();
+    request.current = controller;
     setLoading(true);
+    setAiLoading(false);
     setLecture(null);
     setExplanation('');
     setExtractedText('');
     setGeneratedTest(null);
     setError('');
-    api.get(`/lectures/${id}`).then(res => {
+    api.get(`/lectures/${id}`, { signal: controller.signal }).then(res => {
+      if (controller.signal.aborted) return;
       setLecture(res.data.data);
       setLoading(false);
     }).catch((e) => {
+      if (controller.signal.aborted) return;
       setError(errorText(e));
       setLoading(false);
     });
-  }, [id, navigate]);
+    return () => controller.abort();
+  }, [id]);
 
   const downloadFile = async () => {
+    const signal = request.current?.signal;
     try {
-      const { data } = await api.get(lecture.fileUrl.replace(/^\/api\/v1/, ''), { responseType: 'blob' });
+      const { data } = await api.get(lecture.fileUrl.replace(/^\/api\/v1/, ''), { responseType: 'blob', signal });
+      if (signal?.aborted) return;
       const url = URL.createObjectURL(data);
       const link = document.createElement('a');
       link.href = url;
       link.download = lecture.fileName || 'lecture';
       link.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch (e) { setError(errorText(e)); }
+    } catch (e) { if (!signal?.aborted) setError(errorText(e)); }
   };
 
   const explainLecture = async () => {
+    if (aiLoading) return;
+    const signal = request.current?.signal;
     setError('');
     setAiLoading(true);
     try {
-      const res = await api.post(`/lectures/${id}/explain`);
+      const res = await api.post(`/lectures/${id}/explain`, undefined, { signal });
+      if (signal?.aborted) return;
       setExplanation(res.data.data.explanation);
     } catch (e) {
-      setError(errorText(e));
+      if (!signal?.aborted) setError(errorText(e));
+    } finally {
+      if (!signal?.aborted) setAiLoading(false);
     }
-    setAiLoading(false);
   };
 
   const generateTest = async () => {
+    if (aiLoading) return;
+    const signal = request.current?.signal;
     setError('');
     setAiLoading(true);
     try {
-      const test = generatedTest || (await api.post(`/lectures/${id}/generate-test`)).data.data;
+      const test = generatedTest || (await api.post(`/lectures/${id}/generate-test`, undefined, { signal })).data.data;
+      if (signal?.aborted) return;
       setGeneratedTest(test);
-      const { data } = await api.post(`/tests/${test.id}/start`);
+      const { data } = await api.post(`/tests/${test.id}/start`, undefined, { signal });
+      if (signal?.aborted) return;
       navigate(`/test/${data.data.id}/play`, { state: { test } });
     } catch (e) {
-      setError(errorText(e));
+      if (!signal?.aborted) setError(errorText(e));
+    } finally {
+      if (!signal?.aborted) setAiLoading(false);
     }
-    setAiLoading(false);
   };
 
   const extractText = async () => {
+    if (aiLoading) return;
+    const signal = request.current?.signal;
     setError('');
     setAiLoading(true);
     try {
-      const { data } = await api.post(`/lectures/${id}/extract-text`);
+      const { data } = await api.post(`/lectures/${id}/extract-text`, undefined, { signal });
+      if (signal?.aborted) return;
       setExtractedText(data.data.text);
     } catch (e) {
-      setError(errorText(e));
+      if (!signal?.aborted) setError(errorText(e));
     } finally {
-      setAiLoading(false);
+      if (!signal?.aborted) setAiLoading(false);
     }
   };
 

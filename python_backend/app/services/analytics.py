@@ -1,8 +1,11 @@
 from app.db.database import prisma
+from app.core.config import settings
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 class AnalyticsService:
     async def get_overall_analytics(self, user_id: str):
+        school_zone = ZoneInfo(settings.SCHOOL_TIMEZONE)
         total_attempts = await prisma.attempt.count(where={"userId": user_id})
         completed_attempts = await prisma.attempt.count(where={"userId": user_id, "status": "COMPLETED"})
         
@@ -66,13 +69,13 @@ class AnalyticsService:
             ],
             "progressOverTime": [
                 {
-                    "date": p.completedAt.isoformat().split('T')[0] if p.completedAt else None,
+                    "date": p.completedAt.astimezone(school_zone).date().isoformat() if p.completedAt else None,
                     "score": p.percentage,
                 } for p in progress_over_time
             ],
             "studyActivity": [
                 {
-                    "date": s.createdAt.isoformat().split('T')[0],
+                    "date": s.createdAt.astimezone(school_zone).date().isoformat(),
                     "type": s.activityType,
                     "duration": s.duration,
                     "xpEarned": s.xpEarned,

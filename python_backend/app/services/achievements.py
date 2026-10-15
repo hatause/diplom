@@ -11,7 +11,9 @@ class AchievementsService:
         catalog = await db.achievement.find_many()
         unlocked = {x.achievementId for x in await db.userachievement.find_many(where={"userId": user_id})}
         attempts = await db.attempt.find_many(where={"userId": user_id, "status": "COMPLETED"})
-        answers = await db.answer.count(where={"attempt": {"is": {"userId": user_id, "status": "COMPLETED"}}})
+        # Submission also stores rows for skipped questions; only actual answers
+        # advance the question-count achievement.
+        answers = sum((a.correctCount or 0) + (a.wrongCount or 0) for a in attempts)
         progress = await db.topicprogress.find_many(where={"userId": user_id})
         reward = 0
         for achievement in catalog:

@@ -166,21 +166,21 @@ public class AuditoryJournalRepository {
      * @param end       время конца
      * @return количество удалённых записей
      */
-    public int deleteByAudIdAndTime(int audId, LocalTime start, LocalTime end) {
+    public int deleteByAudIdAndTime(int audId, int dayOfWeek, LocalTime start, LocalTime end) {
         return jdbcTemplate.update(
                 "DELETE FROM dbo.auditory_journal " +
-                        "WHERE aud_id = ? AND startTime = ? AND endTime = ?",
-                audId, start, end
+                        "WHERE aud_id = ? AND dayOfWeek = ? AND startTime = CAST(? AS time) AND endTime = CAST(? AS time)",
+                audId, dayOfWeek, start.toString(), end.toString()
         );
     }
 
     /**
      * Удаляет запись журнала по id.
      *
-     * @param audId ID записи в auditory_journal
+     * @param id ID записи в auditory_journal
      * @return количество удалённых записей (0 или 1)
      */
-    public int deleteById(int audId) {
-        return jdbcTemplate.update("DELETE FROM dbo.auditory_journal WHERE aud_id = ?", audId);
+    public int deleteById(int id) {
+        return jdbcTemplate.update("DELETE FROM dbo.auditory_journal WHERE id = ?", id);
     }
 }

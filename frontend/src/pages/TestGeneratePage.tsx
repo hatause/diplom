@@ -114,6 +114,8 @@ export function TestGeneratePage() {
         className="glass-card"
         style={{ padding: '32px', borderRadius: 'var(--radius-xl)' }}
       >
+        <fieldset disabled={generating} className="min-w-0">
+        <legend className="sr-only">Параметры теста</legend>
         {/* Subject */}
         <div style={{ marginBottom: 24 }}>
           <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>
@@ -266,6 +268,7 @@ export function TestGeneratePage() {
             </>
           )}
         </motion.button>
+        </fieldset>
       </motion.div>
     </div>
   );

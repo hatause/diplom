@@ -185,7 +185,11 @@ class CompanionService:
             if data['completed'] or request.index != len(data['answers']):
                 raise HTTPException(409, 'Этот ответ уже сохранён. Обновите викторину.')
             question = data['questions'][request.index]
-            correct = normalize_answer(request.answer) == normalize_answer(question['answer'])
+            if question['type'] == 'short_answer':
+                correct = normalize_answer(request.answer) == normalize_answer(question['answer'])
+            else:
+                # A selected option must retain its case and punctuation.
+                correct = request.answer == question['answer']
             data['answers'].append({'answer': request.answer, 'correct': correct})
             data['completed'] = len(data['answers']) == len(data['questions'])
             if data['completed']:
