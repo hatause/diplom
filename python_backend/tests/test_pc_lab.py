@@ -10,7 +10,7 @@ from app.db.database import prisma
 from app.services.pc_lab import calculate_score, empty_progress
 
 PARTS = ['part-cpu', 'part-gpu', 'part-mobo', 'part-ram', 'part-ssd', 'part-psu', 'part-cooler', 'pc-case']
-FAULTS = ['TPM_BYPASS', 'INTEL_VMD_DRIVER', 'MBR_TO_GPT_DISKPART', 'OOBE_BYPASSNRO']
+FAULTS = ['TPM_BYPASS', 'INTEL_VMD_DRIVER', 'MBR_TO_GPT_DISKPART', 'OOBE_BYPASSNRO', 'INSUFFICIENT_SPACE', 'BOOT_ORDER']
 
 class ScoreTests(unittest.TestCase):
     def test_partial_and_full_credit(self):
@@ -19,11 +19,36 @@ class ScoreTests(unittest.TestCase):
         data.update(inspected_parts=PARTS, assembly_completed=True, bios_flashed=True, windows_installed=True)
         self.assertEqual(calculate_score(data), 65)  # Disabled faults do not count as solved.
         data['resolved_faults'] = FAULTS
+        self.assertEqual(calculate_score(data), 65)  # Six faults alone do not replace the quizzes.
+        data['resume']['quiz_answers'] = {'backup': 1, 'uefi': 2, 'efi': 0, 'driver': 1}
         self.assertEqual(calculate_score(data), 100)
         data['assembly_mistakes'] = 2
         self.assertEqual(calculate_score(data), 96)
         data['assembly_mistakes'] = 100
         self.assertEqual(calculate_score(data), 85)
+
+    def test_legacy_completion_keeps_its_score(self):
+        data = empty_progress()
+        data.update(inspected_parts=PARTS, assembly_completed=True, bios_flashed=True,
+                    windows_installed=True, resolved_faults=FAULTS[:4], resume={})
+        self.assertEqual(calculate_score(data), 100)
+        data['resume']['curriculum_version'] = 2
+        self.assertEqual(calculate_score(data), 65)
+
+    def test_each_v2_requirement_is_required(self):
+        from copy import deepcopy
+        data = empty_progress()
+        data.update(windows_installed=True, resolved_faults=FAULTS)
+        data['resume']['quiz_answers'] = {'backup': 1, 'uefi': 2, 'efi': 0, 'driver': 1}
+        self.assertEqual(calculate_score(data), 35)
+        for fault in FAULTS:
+            partial = deepcopy(data)
+            partial['resolved_faults'].remove(fault)
+            self.assertEqual(calculate_score(partial), 0, fault)
+        for question in data['resume']['quiz_answers']:
+            partial = deepcopy(data)
+            partial['resume']['quiz_answers'][question] = (partial['resume']['quiz_answers'][question] + 1) % 3
+            self.assertEqual(calculate_score(partial), 0, question)
 
 @unittest.skipUnless(os.environ.get('RUN_DB_TESTS') == '1', 'Set RUN_DB_TESTS=1 for integration')
 class ProgressTests(unittest.IsolatedAsyncioTestCase):
@@ -46,7 +71,8 @@ class ProgressTests(unittest.IsolatedAsyncioTestCase):
                 own, other = headers
                 self.assertEqual((await client.get(path, headers=own)).json()['data']['total_score'], 0)
                 for body in [{'inspected_parts': ['bogus']}, {'assembly_mistakes': -1}, {'system_drive_gb': 451},
-                             {'total_score': 100}, {'user_id': users[1]}, {'resume': {'win_step': 6}}, {'revision': '0'}]:
+                             {'total_score': 100}, {'user_id': users[1]}, {'resume': {'win_step': 6}}, {'revision': '0'}, {'resume': {'quiz_answers': {'invented': 1}}},
+                             {'resume': {'quiz_answers': {'backup': 3}}}, {'resume': {'quiz_mistakes': -1}}]:
                     self.assertEqual((await client.post(path, headers=own, json=body)).status_code, 422, body)
                 r = await client.post(path, headers=own, json={'revision': 0, 'inspected_parts': ['part-cpu', 'part-cpu'],
                     'resume': {'mode': 'builder', 'installed': ['part-psu']}})
@@ -64,11 +90,18 @@ class ProgressTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(d['total_score'], 21)
                 r = await client.post(path, headers=own, json={'revision': d['revision'], 'inspected_parts': PARTS,
                     'assembly_completed': True, 'assembly_mistakes': 2, 'windows_installed': True,
-                    'resolved_faults': FAULTS, 'system_drive_gb': 300})
+                    'resolved_faults': FAULTS, 'system_drive_gb': 300,
+                    'resume': {'curriculum_version': 2, 'quiz_answers': {'backup': 1, 'uefi': 2, 'efi': 0, 'driver': 1}, 'quiz_mistakes': 2, 'diagnostic_mistakes': 1}})
                 self.assertEqual(r.status_code, 200, r.text[:500])
                 d = r.json()['data']
                 self.assertEqual(d['total_score'], 96)
                 self.assertIsNotNone(d['completed_at'])
+                self.assertEqual(d['resume']['quiz_mistakes'], 2)
+                self.assertEqual(d['resume']['diagnostic_mistakes'], 1)
+                downgrade = await client.post(path, headers=own, json={'revision': d['revision'], 'resume': {'curriculum_version': 1}, 'resolved_faults': FAULTS[:4]})
+                d = downgrade.json()['data']
+                self.assertEqual(d['resume']['curriculum_version'], 2)
+                self.assertEqual(d['total_score'], 61)
                 self.assertEqual((await client.get(path, headers=other)).json()['data']['total_score'], 0)
                 reset = await client.post(path, headers=own, json={'revision': d['revision'], 'assembly_completed': False})
                 self.assertIsNone(reset.json()['data']['completed_at'])

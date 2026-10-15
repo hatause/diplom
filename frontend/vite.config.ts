@@ -8,6 +8,7 @@ export default defineConfig({
   resolve: {
     alias: { '@': path.resolve(__dirname, './src') },
   },
+  build: {rollupOptions:{input:{main:path.resolve(__dirname,'index.html'),hardware:path.resolve(__dirname,'pc-lab-viewer.html')}}},
   server: {
     port: 5173,
     host: '0.0.0.0',

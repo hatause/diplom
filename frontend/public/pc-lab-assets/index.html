@@ -136,6 +136,8 @@
           <input type="checkbox" id="chkFaultOobe" checked onchange="syncFaultToggles()" />
           <span>4. Блокировка сети OOBE Microsoft</span>
         </label>
+        <label class="fault-Toggle"><input type="checkbox" id="chkFaultSpace" checked onchange="syncFaultToggles()"/><span>5. Системному разделу не хватает места</span></label>
+        <label class="fault-Toggle"><input type="checkbox" id="chkFaultBoot" checked onchange="syncFaultToggles()"/><span>6. Повторная загрузка с USB</span></label>
       </div>
     </div>
 
@@ -160,6 +162,8 @@
       <!-- =============================================================== -->
       <!-- ХОЛСТ №1: ИНДИВИДУАЛЬНЫЕ КРУПНЫЕ 3D-МОДЕЛИ КАЖДОЙ ДЕТАЛИ ПК     -->
       <!-- =============================================================== -->
+      <iframe id="hardwareFrame" src="/pc-lab-viewer.html" title="Интерактивный 3D-осмотр комплектующих" scrolling="no"></iframe>
+      <p id="hardwareFallback" class="lab-note" hidden>WebGL недоступен. Включите аппаратное ускорение для вращения 3D-моделей. Практикум работает в режиме схемы.</p>
       <svg id="singlePartSvg" viewBox="0 0 860 560" width="100%" height="620" xmlns="http://www.w3.org/2000/svg">
         <!-- Сюда динамически рендерится детальная 3-слойная изометрическая 3D-модель выбранного узла -->
       </svg>

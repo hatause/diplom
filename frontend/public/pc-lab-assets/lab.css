@@ -778,3 +778,12 @@ button, code, .spec-Val, .cmd-Terminal {overflow-wrap:anywhere;}
 .setup-locales select {padding:8px;background:#172338;color:#f8fafc;border:1px solid #475569;border-radius:6px;}
 /* The page scrolls as one surface, including long setup tables on phones. */
 .monitor-ScreenBody {min-height:0;max-height:none;overflow:visible;}
+
+/* WebGL is progressive enhancement: original diagrams remain a usable fallback. */
+#hardwareFrame{display:none;width:100%;height:700px;border:0;grid-row:2;min-width:0;}
+.has-hardware3d #hardwareFrame{display:block;}
+.has-hardware3d .canvas-Stage>svg{display:none!important;}
+#hardwareFallback{grid-row:2;}
+.has-hardware3d[data-mode="bios"] #hardwareFrame,.has-hardware3d[data-mode="windows"] #hardwareFrame{grid-row:4;}
+.lab-quiz{border:1px solid #395c69;background:#111f2c;border-radius:10px;padding:16px;margin:14px 0;color:#dce6ef;font-size:12px;}
+.lab-quiz h3{font-size:15px;margin:0 0 8px}.lab-quiz>p{color:#9fbbc8;line-height:1.6}.lab-quiz fieldset{border:0;padding:12px 0;margin:8px 0;border-top:1px solid #334653;min-width:0}.lab-quiz legend{font-weight:600;line-height:1.6;float:left;width:100%;margin:8px 0}.quiz-option{clear:both;display:flex;gap:9px;align-items:baseline;line-height:1.5;padding:9px;border:1px solid #354b5a;margin:6px 0;border-radius:6px;cursor:pointer}.quiz-option.selected{border-color:#6faaa2;background:#243a42}.quiz-feedback{line-height:1.6;padding:10px;border-radius:6px}.quiz-feedback.correct{color:#b8edd3;background:#173d32}.quiz-feedback.incorrect{color:#ffd4b5;background:#4a3023}

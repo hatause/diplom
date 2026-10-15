@@ -526,8 +526,8 @@
       labProgress.resolved_faults = labProgress.resolved_faults.filter(key => !document.getElementById(faultInputs[key]).checked);
       if (faultTpmActive) winStep = 1;
       else if (winStep > 2 && faultVmdActive) winStep = 2;
-      else if (winStep > 3 && faultMbrActive) winStep = 3;
-      else if (winStep > 4 && faultOobeActive) winStep = 4;
+      else if (winStep > 3 && (faultMbrActive || document.getElementById('chkFaultSpace').checked)) winStep = 3;
+      else if (winStep > 4 && (faultOobeActive || document.getElementById('chkFaultBoot').checked)) winStep = 4;
       if (winStep < 5) labProgress.windows_installed = false;
       appRoot.classList.remove('ssd-pulse');
       renderWindowsStep();
@@ -540,6 +540,7 @@
     labProgress.windows_installed = false;
     labProgress.resolved_faults = [];
     selectedDrivers = [];
+    curriculumVersion = 2; quizAnswers = {}; quizMistakes = 0; diagnosticMistakes = 0;
     Object.values(faultInputs).forEach(id => document.getElementById(id).checked = true);
     winStep = 1;
     cmdOpen = false;
@@ -620,7 +621,8 @@
             </div>
             ${renderCmdBlock()}
           </div>
-          <button class="sim-Btn is-emerald" onclick="winStep = 2; cmdOpen = false; renderWindowsStep();">
+          ${renderQuiz('preflight')}
+          <button class="sim-Btn is-emerald" ${quizPassed('preflight')?'':'disabled'} onclick="winStep = 2; cmdOpen = false; renderWindowsStep();">
             Подтвердить редакцию и перейти к выбору накопителя →
           </button>
         `;
@@ -694,6 +696,8 @@
           </div>
           <button class="sim-Btn" disabled>Далее (Требуется таблица разделов GPT)</button>
         `;
+      } else if (document.getElementById('chkFaultSpace').checked) {
+        renderDiagnostic('INSUFFICIENT_SPACE');
       } else {
         const dDriveSize = 511 - cDriveSizeGb;
         setBanner('🛠️ Конструктор разделов GPT: распредели объем SSD между системным диском C: и диском данных D:', 'normal');
@@ -734,7 +738,9 @@
 
     // ЭТАП 4: Первичная настройка OOBE и ПРОВЕРКА ПРОБЛЕМЫ #4 (Требование интернета и аккаунта Microsoft)
     else if (winStep === 4) {
-      if (faultOobeActive) {
+      if (document.getElementById('chkFaultBoot').checked) {
+        renderDiagnostic('BOOT_ORDER');
+      } else if (faultOobeActive) {
         setBanner('❌ Проблема #4: Экран OOBE «Давайте подключим вас к сети» не пускает дальше без интернета и аккаунта Microsoft!', 'error');
         monitorScreenContent.innerHTML = `
           <div class="win-Box">
@@ -773,7 +779,8 @@
             </div>
             ${renderCmdBlock()}
           </div>
-          <button class="sim-Btn is-emerald" ${selectedDrivers.length < 3 ? "disabled" : ""} onclick="winStep = 5; renderWindowsStep();">
+          ${renderQuiz('handoff')}
+          <button class="sim-Btn is-emerald" ${selectedDrivers.length < 3 || !quizPassed('handoff') ? "disabled" : ""} onclick="winStep = 5; renderWindowsStep();">
             Завершить настройку и загрузить рабочий стол Windows 11 →
           </button>
         `;
@@ -783,7 +790,7 @@
     // ЭТАП 5: Финальный рабочий стол и полный отчет по устраненным проблемам
     else if (winStep === 5) {
       labProgress.windows_installed = true;
-      setBanner(`🎉 Windows установлена. Решено учебных неисправностей: ${labProgress.resolved_faults.length} / 4.`, 'success');
+      setBanner(`🎉 Windows установлена. Решено учебных неисправностей: ${labProgress.resolved_faults.length} / ${curriculumVersion === 2 ? 6 : 4}.`, 'success');
       monitorScreenContent.innerHTML = `
         <div class="win11-Desktop">
           <div>
@@ -793,7 +800,8 @@
             </div>
             <div style="background:rgba(15,23,42,0.88); border:1px solid rgba(148,163,184,0.32); border-radius:8px; padding:10px; font-size:11px; line-height:1.5;">
               <b style="color:#38bdf8;">Отчет по устраненным проблемам и конфигурации системы:</b><br/>
-              ${Object.entries(faultNames).map(([key, label]) => `${labProgress.resolved_faults.includes(key) ? '✓' : '○'} ${label}: ${labProgress.resolved_faults.includes(key) ? 'решено' : 'не отработано'}<br/>`).join('')}
+              ${Object.entries(faultNames).filter(([key])=>curriculumVersion===2||!['INSUFFICIENT_SPACE','BOOT_ORDER'].includes(key)).map(([key, label]) => `${labProgress.resolved_faults.includes(key) ? '✓' : '○'} ${label}: ${labProgress.resolved_faults.includes(key) ? 'решено' : 'не отработано'}<br/>`).join('')}
+              ${curriculumVersion===2?`Мини-тесты: ${['preflight','handoff'].filter(quizPassed).length} / 2 · Неверных ответов: ${quizMistakes} · Ошибок диагностики: ${diagnosticMistakes}<br/>`:'Пройдено по предыдущей программе. «Перезапустить этап» откроет 6 неисправностей и 2 теста.<br/>'}
               Системный раздел C: ${cDriveSizeGb} ГБ · Данные D: ${511 - cDriveSizeGb} ГБ<br/>
               Язык: ${setupLanguage === 'ru-RU' ? 'Русский' : 'English'} · Регион: ${setupRegion} · Клавиатура: ${setupKeyboard}<br/>
               Разбор узлов: ${labProgress.inspected_parts.length} / 8 · Сборка: ${labProgress.assembly_completed ? '8 / 8 ✓' : 'не завершена'} · BIOS: ${biosVersion}
@@ -1199,10 +1207,13 @@
 
   function onSvgPartClick(partId, event) {
     if (event) event.stopPropagation();
-    populateInspectorCard(partId);
+    inspectPart(partId);
   }
 
   function inspectPart(partId) {
+    activePartId = partId;
+    isPartDissected = false;
+    if (currentMode === 'explore') hardwareMessage(partId === 'all' ? 'hardware:reset' : 'hardware:extract', {part:partId});
     document.querySelectorAll('.part-Btn').forEach(btn => {
       btn.classList.toggle('is-selected', btn.dataset.part === partId);
     });
@@ -1227,6 +1238,8 @@
   }
 
   function toggleExplode() {
+    isPartDissected = false;
+    hardwareMessage('hardware:reset');
     appRoot.classList.toggle('is-exploded');
     document.getElementById('btnExplode').classList.toggle('is-active');
   }
@@ -1248,11 +1261,57 @@
   }
 
 
+const QUIZZES = {
+  preflight: {title:'Мини-тест 1 · Подготовка к установке', questions:[
+    {id:'backup',text:'На SSD остались документы. Что сделать до удаления разделов?',options:['Сразу выполнить clean: документы останутся','Скопировать данные на другой носитель и проверить копию','Выключить Secure Boot'],answer:1,why:'clean удаляет таблицу разделов выбранного диска. Сначала нужна проверенная резервная копия на другом носителе.'},
+    {id:'uefi',text:'Какой режим загрузки и разметку выбрать для этого современного ПК?',options:['Legacy + MBR','UEFI + MBR','UEFI + GPT'],answer:2,why:'В этом сценарии установщик загружается в UEFI и использует GPT. Legacy/CSM не требуется.'}
+  ]},
+  handoff: {title:'Мини-тест 2 · Проверка готовой системы', questions:[
+    {id:'efi',text:'Для чего нужен раздел EFI System с FAT32?',options:['Для загрузочных файлов UEFI','Для личных документов','Для файла подкачки видеокарты'],answer:0,why:'EFI System содержит файлы загрузчика, в том числе Windows Boot Manager. Его удаление может сделать систему незагружаемой.'},
+    {id:'driver',text:'После установки в диспетчере устройств есть неизвестное устройство. Что делать?',options:['Скачать любой «ускоритель драйверов»','Определить устройство по Hardware ID и установить подходящий драйвер производителя','Удалить системный раздел и начать заново'],answer:1,why:'Hardware ID помогает определить модель устройства. Подходящий драйвер берут у производителя устройства или платы; затем проверяют состояние устройства.'}
+  ]}
+};
+function quizPassed(id) {
+  return curriculumVersion === 1 || QUIZZES[id].questions.every(q=>quizAnswers[q.id]===q.answer);
+}
+function renderQuiz(id) {
+  if (curriculumVersion === 1) return '';
+  const quiz = QUIZZES[id];
+  return `<section class="lab-quiz" aria-label="${quiz.title}"><h3>${quiz.title}</h3><p>Ответь на оба вопроса, чтобы продолжить. После ошибки можно выбрать другой ответ.</p>${quiz.questions.map((q,i)=>`<fieldset><legend>${i+1}. ${q.text}</legend>${q.options.map((text,index)=>`<label class="quiz-option ${quizAnswers[q.id]===index?'selected':''}"><input type="radio" name="quiz-${q.id}" data-question="${q.id}" value="${index}" ${quizAnswers[q.id]===index?'checked':''} onchange="answerQuiz('${q.id}',${index})"/>${text}</label>`).join('')}${q.id in quizAnswers?`<p class="quiz-feedback ${quizAnswers[q.id]===q.answer?'correct':'incorrect'}" role="status">${quizAnswers[q.id]===q.answer?'✓ Верно.':'Пока неверно.'} ${q.why}</p>`:''}</fieldset>`).join('')}<p>${quizPassed(id)?'✓ Тест пройден':'Нужно два верных ответа'} · Неверных ответов за установку: ${quizMistakes}</p></section>`;
+}
+function answerQuiz(id,index) {
+  const question = Object.values(QUIZZES).flatMap(q=>q.questions).find(q=>q.id===id);
+  if (!question || ![0,1,2].includes(index)) return;
+  if (quizAnswers[id] !== index && index !== question.answer) quizMistakes = Math.min(10000,quizMistakes+1);
+  quizAnswers[id] = index;
+  renderWindowsStep();emitProgress();
+  document.querySelector(`[data-question="${id}"][value="${index}"]`)?.focus({preventScroll:true});
+}
+const DIAGNOSTICS = {
+  INSUFFICIENT_SPACE:{title:'Недостаточно места на системном разделе',detail:'Выбран раздел 32 ГБ. Для учебной установки с приложениями выдели не менее 100 ГБ. На SSD есть свободное нераспределённое пространство; существующий том данных D: нужно сохранить.',options:['Удалить EFI-раздел: он занимает лишнее место','Выделить 200 ГБ из свободного пространства под системный том','Удалить том D: с документами без резервной копии'],answer:1,why:['EFI-раздел занимает совсем мало места и нужен для загрузки. Его удаление не решит проблему.','','Документы нельзя удалять ради установки. В условии уже есть свободное пространство — используй его.']},
+  BOOT_ORDER:{title:'После перезагрузки снова открылся установщик',detail:'Файлы Windows уже скопированы на NVMe SSD. UEFI снова загрузился с USB, и ты видишь начальный экран установки. Как продолжить настройку установленной системы?',options:['Снова выбрать UEFI: USB и форматировать диск','Включить Legacy/CSM и искать MBR-загрузчик','Выбрать Windows Boot Manager (NVMe SSD) первым в UEFI'],answer:2,why:['Повторная установка не нужна: система уже находится на SSD. Нужно изменить источник загрузки.','Этот диск размечен как GPT для загрузки UEFI. Переход в Legacy не поможет.','']}
+};
+function renderDiagnostic(id,feedback='') {
+  const d=DIAGNOSTICS[id];
+  setBanner('Диагностика: '+d.title,'error');
+  monitorScreenContent.innerHTML=`<div class="win-Box" data-diagnostic="${id}"><div class="win-Title">${d.title}</div><div class="error-AlertBox">${d.detail}</div><p class="lab-note">Выбери действие. Неверное решение оставит проблему активной.</p><div class="solution-Cards">${d.options.map((option,i)=>`<button class="sol-Btn" data-diagnostic-answer="${i}" onclick="answerDiagnostic('${id}',${i})">${option}</button>`).join('')}</div>${feedback?`<p class="quiz-feedback incorrect" role="alert">${feedback}</p>`:''}<p class="lab-note">Ошибок диагностики: ${diagnosticMistakes}</p></div><button class="sim-Btn" disabled>Сначала устраните неисправность</button>`;
+}
+function answerDiagnostic(id,index) {
+  const d=DIAGNOSTICS[id];
+  if(!d || ![0,1,2].includes(index))return;
+  if(index!==d.answer){diagnosticMistakes=Math.min(10000,diagnosticMistakes+1);renderDiagnostic(id,d.why[index]);emitProgress();return;}
+  recordFault(id);document.getElementById(faultInputs[id]).checked=false;
+  if(id==='INSUFFICIENT_SPACE') cDriveSizeGb=200;
+  renderWindowsStep();emitProgress();
+}
+Object.assign(window,{answerQuiz,answerDiagnostic});
+
 // Integration boundary: the host owns authentication and persistence. No tokens enter this document.
-const faultInputs = {TPM_BYPASS:'chkFaultTpm',INTEL_VMD_DRIVER:'chkFaultVmd',MBR_TO_GPT_DISKPART:'chkFaultMbr',OOBE_BYPASSNRO:'chkFaultOobe'};
-const faultNames = {TPM_BYPASS:'TPM / Secure Boot',INTEL_VMD_DRIVER:'Контроллер Intel VMD',MBR_TO_GPT_DISKPART:'Разметка GPT',OOBE_BYPASSNRO:'Автономная настройка OOBE'};
+const faultInputs = {TPM_BYPASS:'chkFaultTpm',INTEL_VMD_DRIVER:'chkFaultVmd',MBR_TO_GPT_DISKPART:'chkFaultMbr',OOBE_BYPASSNRO:'chkFaultOobe',INSUFFICIENT_SPACE:'chkFaultSpace',BOOT_ORDER:'chkFaultBoot'};
+const faultNames = {TPM_BYPASS:'TPM / Secure Boot',INTEL_VMD_DRIVER:'Контроллер Intel VMD',MBR_TO_GPT_DISKPART:'Разметка GPT',OOBE_BYPASSNRO:'Автономная настройка OOBE',INSUFFICIENT_SPACE:'Место для системного раздела',BOOT_ORDER:'Правильный загрузчик UEFI'};
 let labProgress = {inspected_parts:[],assembly_completed:false,assembly_mistakes:0,bios_flashed:false,windows_installed:false,resolved_faults:[],system_drive_gb:200};
 let selectedDrivers = [];
+let curriculumVersion = 2, quizAnswers = {}, quizMistakes = 0, diagnosticMistakes = 0;
 let initialized = false;
 function recordFault(fault) {
   if (!labProgress.resolved_faults.includes(fault)) labProgress.resolved_faults.push(fault);
@@ -1290,6 +1349,7 @@ function restoreBuilder() {
 }
 function snapshot() {
   return {...labProgress, system_drive_gb:cDriveSizeGb, resume:{
+    curriculum_version:curriculumVersion, quiz_answers:quizAnswers,quiz_mistakes:quizMistakes,diagnostic_mistakes:diagnosticMistakes,
     language:setupLanguage, region:setupRegion, keyboard:setupKeyboard,
     mode:currentMode, installed:ORDERED_STEPS.filter(id=>installedParts.has(id)),
     win_step:winStep, edition:winEdition, drivers:selectedDrivers,
@@ -1297,11 +1357,14 @@ function snapshot() {
   }};
 }
 function emitProgress() {
+  syncHardware();
   if (initialized) parent.postMessage({type:'pc-lab:progress',progress:snapshot()}, location.origin);
 }
 function restoreProgress(data) {
   labProgress = {...labProgress, ...data};
   const resume = data.resume || {};
+  curriculumVersion = resume.curriculum_version || 1;
+  quizAnswers = resume.quiz_answers || {}; quizMistakes = resume.quiz_mistakes || 0; diagnosticMistakes = resume.diagnostic_mistakes || 0;
   installedParts = new Set(['pc-case', ...(resume.installed || [])]);
   if (data.assembly_completed) ORDERED_STEPS.forEach(id=>installedParts.add(id));
   biosVersion = data.bios_flashed ? 'v2.40' : 'v1.02';
@@ -1313,10 +1376,12 @@ function restoreProgress(data) {
   setupKeyboard = resume.keyboard || 'ru';
   selectedDrivers = resume.drivers || [];
   Object.entries(faultInputs).forEach(([key,id])=>document.getElementById(id).checked = (resume.faults || Object.keys(faultInputs)).includes(key));
+  if (curriculumVersion === 1) {document.getElementById('chkFaultSpace').checked=false;document.getElementById('chkFaultBoot').checked=false;}
   syncFaultToggles();
   switchMode(resume.mode || 'partlab');
   initialized = true;
   appRoot.inert = false;
+  syncHardware();
 }
 window.addEventListener('message', event => {
   if (event.source !== parent || event.origin !== location.origin) return;
@@ -1350,6 +1415,46 @@ if (parent !== window) {
   initialized = true;
 }
 new ResizeObserver(()=>parent.postMessage({type:'pc-lab:height',height:appRoot.getBoundingClientRect().height},location.origin)).observe(appRoot);
+
+// The WebGL child only receives visual state; authentication stays in the host.
+const hardwareFrame = document.getElementById('hardwareFrame');
+function hardwareMessage(type, data = {}) {
+  document.getElementById('hardwareFrame')?.contentWindow?.postMessage({type, ...data}, location.origin);
+}
+function syncHardware() {
+  hardwareMessage('hardware:state', {state:{mode:currentMode,part:PARTS_DB[activePartId] && activePartId !== 'all' ? activePartId : 'part-cpu',dissect:isPartDissected,xray:isPartXray,exploded:appRoot.classList.contains('is-exploded'),installed:[...installedParts],held:partInHand}});
+}
+function resetHardwareView() {
+  cameraRig.style.transform = 'translate(0px, 0px) scale(1)';
+  hardwareMessage('hardware:reset');
+}
+window.resetHardwareView = resetHardwareView;
+window.addEventListener('message', event => {
+  if (event.origin !== location.origin || event.source !== hardwareFrame.contentWindow || event.data?.type !== 'hardware:action') return;
+  const d = event.data;
+  if (d.action === 'ready') {appRoot.classList.add('has-hardware3d');syncHardware();}
+  if (d.action === 'unavailable') {appRoot.classList.remove('has-hardware3d');document.getElementById('hardwareFallback').hidden=false;}
+  if (d.action === 'info' && Array.isArray(d.layers) && d.layers.every(name=>typeof name==='string')) {
+    if (currentMode==='partlab') document.getElementById('buildCounter').textContent=d.layers.length+' слоя';
+    const list=document.getElementById('inspSubparts');list.replaceChildren(...d.layers.map(name=>{const li=document.createElement('li');li.textContent=name;return li;}));
+  }
+  if (d.action === 'height' && Number.isFinite(d.height)) hardwareFrame.style.height = Math.max(400,Math.min(1200,Math.ceil(d.height))) + 'px';
+  if (d.action === 'select' && STANDALONE_3D_MODELS[d.part]) {
+    activePartId = d.part; isPartDissected = false;appRoot.classList.remove('is-exploded');
+    document.getElementById('btnExplode').classList.remove('is-active');
+    document.querySelectorAll('.part-Btn').forEach(btn=>btn.classList.toggle('is-selected',btn.dataset.part === d.part));
+    populateInspectorCard(d.part);
+    setBanner('Деталь извлечена. Вращай её мышью или пальцем, разбирай на слои; кнопка «Вернуть в компьютер» вернёт общий стенд.', 'normal');
+  }
+  if (d.action === 'dissect' && STANDALONE_3D_MODELS[d.part]) {activePartId=d.part;isPartDissected=!d.value;togglePartDissect();}
+  if (d.action === 'xray') {isPartXray=!d.value;togglePartXray();}
+  if (d.action === 'explode') {appRoot.classList.toggle('is-exploded',!!d.value);document.getElementById('btnExplode').classList.toggle('is-active',!!d.value);}
+  if (d.action === 'return') {isPartDissected=false;activePartId='all';populateInspectorCard('all');}
+  if (d.action === 'place' && currentMode === 'builder' && BUILD_RULES[d.slot]) tryPlaceInSlot(d.slot);
+  if (!['ready','height','unavailable','info'].includes(d.action)) emitProgress();
+});
+hardwareFrame.addEventListener('load', syncHardware);
+syncHardware();
 
 // Explicit exports for the static document’s inline event handlers.
 Object.assign(window, {togglePartDissect, togglePartXray, solveTpmViaBios, solveTpmViaRegedit, solveVmdLoadDriver, solveVmdDisableInBios, solveMbrViaDiskpart, runWindowsCopyProcess, solveOobeBypassNro, runBiosFlash, resetBuilder, handleSidebarClick, showBuilderHint, installNextCorrectStep, onSvgPartClick, toggleExplode, toggleMonitorMinimize, restartCurrentSim, toggleDriver, updatePartition, selectFirmware});
