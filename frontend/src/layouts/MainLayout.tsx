@@ -5,7 +5,7 @@ import { useThemeStore } from '@/store/theme.store';
 import { LayoutDashboard, BookOpen, Calendar, History, BarChart3, Brain, Trophy, RefreshCcw, MessageSquare, LogOut, Sun, Moon, Menu, X, GraduationCap, Shield, Sparkles, Users, FileText, DoorOpen, Layers, NotebookPen, ArrowUpRight, Lightbulb } from 'lucide-react';
 const sections = [
   {title: 'ТВОЙ ДЕНЬ', links: [ ['/dashboard', LayoutDashboard, 'Обзор'], ['/schedule', Calendar, 'Расписание'], ['/classroom', DoorOpen, 'Найти кабинет'], ['/planner', NotebookPen, 'Задания и тесты'] ]},
-  {title: 'УЧИСЬ С AI', links: [ ['/ai-tutor', Sparkles, 'AI Tutor'], ['/study', BookOpen, 'Подготовка к тесту'], ['/flashcards', Layers, 'Карточки'], ['/quiz', Brain, 'Викторина'], ['/term', Lightbulb, 'Объяснить термин'], ['/notes', FileText, 'Заметки'], ['/progress', BarChart3, 'Мой прогресс'] ]},
+  {title: 'УЧИСЬ С AI', links: [ ['/ai-tutor', Sparkles, 'AI Tutor'], ['/study', BookOpen, 'Подготовка к тесту'], ['/flashcards', Layers, 'Карточки'], ['/quiz', Brain, 'Викторина'], ['/term', Lightbulb, 'Объяснить термин'], ['/pc-lab', Layers, '3D Тренажёр ПК и ОС'], ['/notes', FileText, 'Заметки'], ['/progress', BarChart3, 'Мой прогресс'] ]},
 ];
 const more = [['/subjects',BookOpen,'Предметы'],['/lectures',FileText,'Лекции'],['/test/generate',Brain,'Тесты по предметам'],['/history',History,'История тестов'],['/analytics',BarChart3,'Аналитика'],['/review',RefreshCcw,'Повторение'],['/feynman',Lightbulb,'Метод Фейнмана'],['/debate',MessageSquare,'Дебаты'],['/messages',MessageSquare,'Сообщения'],['/achievements',Trophy,'Достижения']];
 export function MainLayout() {

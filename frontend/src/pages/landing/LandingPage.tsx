@@ -1,3 +1,4 @@
+import { PcLabCard } from '@/features/pc-lab/PcLabCard';
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -87,7 +88,7 @@ export function LandingPage() {
         <nav className="warm-nav-links" aria-label="Разделы главной">
           <a href="#possibilities">Возможности</a>
           <a href="#how-it-works">Как это работает</a>
-          <a href="#your-space">Твоё пространство</a>
+          <Link to="/pc-lab">3D Тренажёр ПК и ОС</Link>
         </nav>
         <div className="row">
           <button
@@ -231,6 +232,7 @@ export function LandingPage() {
           </div>
         </div>
 
+        <PcLabCard preview/>
         <section id="possibilities" className="warm-features">
           <div className="section-editorial">
             <span className="warm-kicker">01 / ВОЗМОЖНОСТИ</span>

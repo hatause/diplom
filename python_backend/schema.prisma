@@ -60,6 +60,7 @@ model User {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
+  pcLabProgress PcLabProgress?
   studentProfile StudentProfile?
   refreshTokens  RefreshToken[]
   attempts       Attempt[]
@@ -434,3 +435,25 @@ model Message {
   @@index([createdAt])
 }
 
+
+// Learning simulator progress; scores are calculated by the API.
+model PcLabProgress {
+  id                    String   @id @default(uuid())
+  user_id               String   @unique
+  inspected_parts       String[] @default([])
+  inspected_parts_count Int      @default(0)
+  assembly_completed    Boolean  @default(false)
+  assembly_mistakes     Int      @default(0)
+  bios_flashed          Boolean  @default(false)
+  windows_installed     Boolean  @default(false)
+  resolved_faults       String[] @default([])
+  system_drive_gb       Int      @default(200)
+  total_score           Int      @default(0)
+  revision              Int      @default(0)
+  resume                Json     @default("{}")
+  updated_at            DateTime @updatedAt
+  completed_at          DateTime?
+  user                  User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("pc_lab_progress")
+}

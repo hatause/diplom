@@ -14,7 +14,7 @@ import logging
 from app.db.database import connect_db, disconnect_db, prisma
 from app.core.config import settings, UPLOAD_DIR
 from app.services.gemini_service import gemini_service
-from app.routers import companion
+from app.routers import companion, pc_lab
 from app.routers import tests, auth, admin, subjects, attempts, analytics, lectures, schedule, groups, teacher, messages, review, upload, achievements, ai, feynman, debate, classroom
 from app.services.classroom_search import classroom_search_service
 import asyncio
@@ -107,6 +107,7 @@ app.include_router(feynman.router, prefix="/api/v1")
 app.include_router(debate.router, prefix="/api/v1")
 app.include_router(classroom.router, prefix="/api/v1")
 app.include_router(companion.router, prefix="/api/v1")
+app.include_router(pc_lab.router, prefix="/api/v1")
 
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 app.include_router(upload.files_router, prefix="/api/v1")

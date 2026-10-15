@@ -104,6 +104,8 @@ function LoadingScreen() {
   );
 }
 
+const PcLabPage = lazy(() => import("@/features/pc-lab/PcLabPage"));
+
 export default function App() {
   const { fetchMe, isLoading } = useAuthStore();
 
@@ -128,6 +130,7 @@ export default function App() {
       />
       <Suspense fallback={<LoadingScreen />}>
         <Routes>
+          <Route path="/pc-lab" element={<PcLabPage />} />
           {/* Auth */}
           <Route element={<AuthLayout />}>
             <Route path="/login" element={<LoginPage />} />

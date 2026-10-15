@@ -1,3 +1,4 @@
+import { PcLabCard } from '@/features/pc-lab/PcLabCard';
 import { useState } from 'react';
 import { useAuthStore } from '@/store/auth.store';
 import { api } from '@/api/client';
@@ -38,6 +39,7 @@ export function ProfilePage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+      <PcLabCard/>
       <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
         <User size={28} style={{ color: 'var(--accent-1)' }} /> Профиль
       </h1>

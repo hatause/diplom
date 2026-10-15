@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Anatomy 3D PC Lab — 3D-Модели Деталей, Сборка, BIOS и Конструктор Windows 11</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+<link rel="stylesheet" href="./lab.css"/>
+
+</head>
+<body>
+
+<div class="lab-App" id="appRoot">
+  <!-- ШАПКА С 5 РЕЖИМАМИ ЛАБОРАТОРНОГО КОМПЛЕКСА -->
+  <div class="lab-Header">
+    <div class="mode-Tabs">
+      <button class="mode-Tab is-active" id="tabPartLab" onclick="switchMode('partlab')">
+        🔬 1. 3D-Модели деталей (Отдельно)
+      </button>
+      <button class="mode-Tab" id="tabExplore" onclick="switchMode('explore')">
+        🏢 2. Общий 3D-Стенд ПК
+      </button>
+      <button class="mode-Tab" id="tabBuilder" onclick="switchMode('builder')">
+        🛠️ 3. Конструктор Сборки
+      </button>
+      <button class="mode-Tab" id="tabBios" onclick="switchMode('bios')">
+        ⚡ 4. Прошивка UEFI BIOS
+      </button>
+      <button class="mode-Tab" id="tabWindows" onclick="switchMode('windows')">
+        🪟 5. Конструктор Windows 11 + Ошибки
+      </button>
+    </div>
+
+    <!-- Кнопки для Вкладки 1 (Отдельные 3D-модели деталей) -->
+    <div class="lab-Actions" id="partLabActions">
+      <button class="btn-Action" id="btnDissectPart" onclick="togglePartDissect()">
+        🧩 Разобрать деталь на слои (Внутри)
+      </button>
+      <button class="btn-Action" id="btnXrayPart" onclick="togglePartXray()">
+        ✨ Рентген-контур
+      </button>
+    </div>
+
+    <!-- Кнопки для Вкладки 2 (Общий стенд) -->
+    <div class="lab-Actions" id="exploreActions" style="display: none;">
+      <button class="btn-Action" id="btnExplode" onclick="toggleExplode()">Разборка всего ПК (Exploded View)</button>
+      <button class="btn-Action" onclick="switchMode('explore')">Сбросить ракурс</button>
+    </div>
+
+    <!-- Кнопки для Вкладки 3 (Конструктор ПК) -->
+    <div class="lab-Actions" id="builderActions" style="display: none;">
+      <button class="btn-Action" onclick="showBuilderHint()">💡 Подсказать слот</button>
+      <button class="btn-Action" onclick="installNextCorrectStep()">⚡ Автошаг сборки</button>
+      <button class="btn-Action" onclick="resetBuilder()">🔄 Разобрать заново</button>
+    </div>
+
+    <!-- Кнопки для Вкладок 4 и 5 (BIOS и Конструктор Windows) -->
+    <div class="lab-Actions" id="monitorActions" style="display: none;">
+      <button class="btn-Action" onclick="previousSetupStep()">← Назад</button>
+      <button class="btn-Action" onclick="toggleMonitorMinimize()">🖥️ Свернуть / Развернуть экран</button>
+      <button class="btn-Action" onclick="restartCurrentSim()">🔄 Перезапустить этап</button>
+    </div>
+  </div>
+
+  <div class="lab-Body">
+    <!-- ЛЕВАЯ КОЛОНКА -->
+    <div class="parts-Sidebar">
+      <div class="build-ProgressBox" id="progressWidget">
+        <div class="progress-Header">
+          <span id="progressLabel">Изучение 3D-детали</span>
+          <span id="buildCounter">3 слоя</span>
+        </div>
+        <div class="progress-Track">
+          <div class="progress-Fill" id="buildProgressBar"></div>
+        </div>
+      </div>
+
+      <div class="sidebar-Heading" id="sidebarTitle">Выбери 3D-модель детали:</div>
+      <button class="part-Btn" id="btnAllParts" data-part="all" onclick="handleSidebarClick('all')" style="display:none;">
+        <span>Весь системный блок</span>
+        <span class="part-Badge">8/8</span>
+      </button>
+
+      <button class="part-Btn is-selected" id="btn-part-cpu" data-part="part-cpu" onclick="handleSidebarClick('part-cpu')">
+        <span>1. Процессор (CPU)</span>
+        <span class="part-Badge" id="badge-part-cpu">3D Модель</span>
+      </button>
+      <button class="part-Btn" id="btn-part-gpu" data-part="part-gpu" onclick="handleSidebarClick('part-gpu')">
+        <span>2. Видеокарта (GPU)</span>
+        <span class="part-Badge" id="badge-part-gpu">3D Модель</span>
+      </button>
+      <button class="part-Btn" id="btn-part-mobo" data-part="part-mobo" onclick="handleSidebarClick('part-mobo')">
+        <span>3. Материнская плата</span>
+        <span class="part-Badge" id="badge-part-mobo">3D Модель</span>
+      </button>
+      <button class="part-Btn" id="btn-part-ram" data-part="part-ram" onclick="handleSidebarClick('part-ram')">
+        <span>4. Память 2x DDR5</span>
+        <span class="part-Badge" id="badge-part-ram">3D Модель</span>
+      </button>
+      <button class="part-Btn" id="btn-part-ssd" data-part="part-ssd" onclick="handleSidebarClick('part-ssd')">
+        <span>5. Накопитель M.2 SSD</span>
+        <span class="part-Badge" id="badge-part-ssd">3D Модель</span>
+      </button>
+      <button class="part-Btn" id="btn-part-psu" data-part="part-psu" onclick="handleSidebarClick('part-psu')">
+        <span>6. Блок питания 750W</span>
+        <span class="part-Badge" id="badge-part-psu">3D Модель</span>
+      </button>
+      <button class="part-Btn" id="btn-part-cooler" data-part="part-cooler" onclick="handleSidebarClick('part-cooler')">
+        <span>7. Башенный кулер</span>
+        <span class="part-Badge" id="badge-part-cooler">3D Модель</span>
+      </button>
+      <button class="part-Btn" id="btn-pc-case" data-part="pc-case" onclick="handleSidebarClick('pc-case')">
+        <span>8. Корпус ПК (ATX)</span>
+        <span class="part-Badge" id="badge-pc-case">3D Модель</span>
+      </button>
+      <button class="part-Btn" id="btn-case-glass-panel" data-part="case-glass-panel" onclick="handleSidebarClick('case-glass-panel')" style="display:none;">
+        <span>9. Боковое стекло</span>
+        <span class="part-Badge" id="badge-case-glass-panel">Финал</span>
+      </button>
+
+      <!-- Панель симуляции проблем установки Windows 11 (Видна на Вкладке 5) -->
+      <div class="fault-ConfigBox" id="winFaultConfig">
+        <div class="fault-Title">⚠️ Конструктор проблем установки ОС</div>
+        <label class="fault-Toggle">
+          <input type="checkbox" id="chkFaultTpm" checked onchange="syncFaultToggles()" />
+          <span>1. Ошибка TPM 2.0 / Secure Boot</span>
+        </label>
+        <label class="fault-Toggle">
+          <input type="checkbox" id="chkFaultVmd" checked onchange="syncFaultToggles()" />
+          <span>2. Скрыт NVMe диск (Intel VMD)</span>
+        </label>
+        <label class="fault-Toggle">
+          <input type="checkbox" id="chkFaultMbr" checked onchange="syncFaultToggles()" />
+          <span>3. Конфликт таблицы MBR вместо GPT</span>
+        </label>
+        <label class="fault-Toggle">
+          <input type="checkbox" id="chkFaultOobe" checked onchange="syncFaultToggles()" />
+          <span>4. Блокировка сети OOBE Microsoft</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- ЦЕНТРАЛЬНАЯ 3D СЦЕНА -->
+    <div class="canvas-Stage">
+      <div class="builder-Banner" id="builderBanner">
+        🔬 Индивидуальная 3D-модель: нажми «🧩 Разобрать деталь на слои» сверху, чтобы увидеть внутреннее устройство!
+      </div>
+
+      <!-- ИНТЕРАКТИВНЫЙ ЭКРАН МОНИТОРА (ДЛЯ ВКЛАДОК 4 И 5) -->
+      <div class="virtual-MonitorModal" id="virtualMonitor">
+        <div class="monitor-TopBezel">
+          <div>
+            <span class="monitor-PowerLed"></span>
+            <span id="monitorBezelTitle">Лабораторный монитор • Сигнал с видеокарты (#part-gpu)</span>
+          </div>
+          <span style="color:#94a3b8; cursor:pointer;" onclick="toggleMonitorMinimize()">[Свернуть экран _]</span>
+        </div>
+        <div class="monitor-ScreenBody" id="monitorScreenContent"></div>
+      </div>
+
+      <!-- =============================================================== -->
+      <!-- ХОЛСТ №1: ИНДИВИДУАЛЬНЫЕ КРУПНЫЕ 3D-МОДЕЛИ КАЖДОЙ ДЕТАЛИ ПК     -->
+      <!-- =============================================================== -->
+      <svg id="singlePartSvg" viewBox="0 0 860 560" width="100%" height="620" xmlns="http://www.w3.org/2000/svg">
+        <!-- Сюда динамически рендерится детальная 3-слойная изометрическая 3D-модель выбранного узла -->
+      </svg>
+
+      <!-- =============================================================== -->
+      <!-- ХОЛСТ №2: ОБЩИЙ СТЕНД СБОРКИ СИСТЕМНОГО БЛОКА                   -->
+      <!-- =============================================================== -->
+      <svg id="mainPcSvg" viewBox="0 0 1000 620" width="100%" height="620" style="display:none;" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="drop-shadow" x="-20%" y="-20%" width="150%" height="150%">
+            <feDropShadow dx="8" dy="14" stdDeviation="9" flood-color="#000" flood-opacity="0.65" />
+          </filter>
+          <linearGradient id="grad-case-top" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#334155" /><stop offset="100%" stop-color="#1e293b" />
+          </linearGradient>
+          <linearGradient id="grad-case-back" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#0f172a" /><stop offset="100%" stop-color="#070b14" />
+          </linearGradient>
+          <linearGradient id="grad-pcb" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#0f2942" /><stop offset="50%" stop-color="#0a1929" /><stop offset="100%" stop-color="#06101b" />
+          </linearGradient>
+          <linearGradient id="grad-metal-top" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#cbd5e1" /><stop offset="100%" stop-color="#64748b" />
+          </linearGradient>
+          <linearGradient id="grad-metal-side" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#64748b" /><stop offset="100%" stop-color="#334155" />
+          </linearGradient>
+          <linearGradient id="grad-gpu-top" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#334155" /><stop offset="100%" stop-color="#0f172a" />
+          </linearGradient>
+          <linearGradient id="grad-rgb" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#38bdf8" /><stop offset="50%" stop-color="#a855f7" /><stop offset="100%" stop-color="#ec4899" />
+          </linearGradient>
+          <linearGradient id="grad-glass" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="rgba(56, 189, 248, 0.16)" /><stop offset="100%" stop-color="rgba(15, 23, 42, 0.25)" />
+          </linearGradient>
+        </defs>
+
+        <g id="camera-rig">
+          <g opacity="0.14" stroke="#475569" stroke-width="1">
+            <polygon points="520,55 890,240 520,425 150,240" fill="none" />
+            <line x1="335" y1="147" x2="705" y2="332" />
+            <line x1="705" y1="147" x2="335" y2="332" />
+          </g>
+
+          <!-- Изометрический монитор -->
+          <g id="iso-monitor" opacity="0.92">
+            <path id="video-cable" d="M 465,300 C 370,330 330,260 285,230" fill="none" stroke="#38bdf8" stroke-width="2" stroke-dasharray="5 3" opacity="0.55" />
+            <polygon points="235,255 295,285 265,300 205,270" fill="#1e293b" stroke="#475569" stroke-width="1.2" />
+            <polygon points="248,215 262,222 262,278 248,271" fill="#334155" stroke="#64748b" />
+            <polygon points="175,95 335,175 343,171 183,91" fill="#475569" />
+            <polygon points="335,175 343,171 343,261 335,265" fill="#0f172a" />
+            <polygon points="175,95 335,175 335,265 175,185" fill="#090d16" stroke="#38bdf8" stroke-width="1.5" />
+            <polygon id="iso-monitor-screen" points="183,104 327,176 327,254 183,182" fill="#0f172a" stroke="#1e293b" />
+            <text id="iso-monitor-status" x="255" y="182" fill="#38bdf8" font-size="9.5" font-weight="700" text-anchor="middle" transform="skewY(26.5)">UEFI / OS READY</text>
+          </g>
+
+          <!-- 0. Корпус ПК -->
+          <g id="pc-case" class="iso-part" onclick="onSvgPartClick('pc-case', event)">
+            <polygon points="520,100 410,155 410,415 520,360" fill="#0b1120" stroke="#334155" stroke-width="1.5" />
+            <polygon points="508,136 482,149 482,205 508,192" fill="#04070f" stroke="#475569" />
+            <ellipse cx="452" cy="195" rx="18" ry="26" transform="skewY(-26.5)" fill="none" stroke="#38bdf8" stroke-width="1" stroke-dasharray="3 2" opacity="0.5" />
+            <polygon points="520,100 740,210 740,470 520,360" fill="url(#grad-case-back)" stroke="#475569" stroke-width="1.5" />
+            <polygon points="682,215 704,226 704,276 682,265" fill="#04070f" stroke="#1e293b" />
+            <polygon points="682,300 704,311 704,361 682,350" fill="#04070f" stroke="#1e293b" />
+            <g fill="#f59e0b">
+              <circle cx="536" cy="144" r="2.5" /><circle cx="660" cy="206" r="2.5" />
+              <circle cx="660" cy="376" r="2.5" /><circle cx="536" cy="306" r="2.5" />
+            </g>
+            <polygon points="520,360 740,470 630,525 410,415" fill="#070b14" stroke="#334155" />
+            <polygon points="520,100 740,210 630,265 410,155" fill="url(#grad-case-top)" stroke="#64748b" stroke-width="1.5" />
+            <polygon points="530,118 690,198 630,228 470,148" fill="#0f172a" stroke="#334155" />
+            <circle cx="632" cy="248" r="3.8" fill="#38bdf8" />
+            <polygon id="case-usb-port" points="645,238 657,244 651,247 639,241" fill="#0284c7" stroke="#7dd3fc" stroke-width="0.8" />
+            <polygon points="740,210 630,265 630,525 740,470" fill="#1e293b" stroke="#475569" stroke-width="1.5" />
+            <polygon points="728,232 642,275 642,495 728,452" fill="#090d16" stroke="#334155" />
+            <g id="case-psu-shroud">
+              <polygon points="520,305 690,390 580,445 410,360" fill="#1e293b" stroke="#475569" opacity="0.55" />
+              <polygon points="410,360 580,445 580,500 410,415" fill="#111827" stroke="#334155" opacity="0.55" />
+              <polygon points="690,390 580,445 580,500 690,445" fill="#0b0f19" stroke="#334155" opacity="0.55" />
+            </g>
+          </g>
+
+          <!-- Изометрическая флешка -->
+          <g id="iso-usb">
+            <polygon points="643,228 653,233 653,244 643,239" fill="#cbd5e1" stroke="#64748b" stroke-width="0.8" />
+            <polygon points="640,202 654,209 660,206 646,199" fill="#f59e0b" />
+            <polygon points="654,209 660,206 660,231 654,234" fill="#b45309" />
+            <polygon points="640,202 654,209 654,234 640,227" fill="#1e293b" stroke="#f59e0b" stroke-width="1.2" />
+            <circle cx="647" cy="214" r="2.2" fill="#38bdf8" />
+            <text x="688" y="212" fill="#fde68a" font-size="10" font-weight="700">[USB 32GB: BIOS + Win11 + Drivers]</text>
+          </g>
+
+          <!-- 1. Блок питания -->
+          <g id="part-psu" class="iso-part" filter="url(#drop-shadow)" onclick="onSvgPartClick('part-psu', event)">
+            <polygon points="520,328 608,372 532,410 444,366" fill="#1e293b" stroke="#64748b" stroke-width="1.2" />
+            <ellipse cx="526" cy="369" rx="28" ry="15" transform="rotate(26.5 526 369)" fill="#090d16" stroke="#475569" stroke-width="1.2" />
+            <circle cx="526" cy="369" r="7" fill="#334155" stroke="#94a3b8" stroke-width="0.8" />
+            <polygon points="444,366 532,410 532,452 444,408" fill="#0f172a" stroke="#475569" stroke-width="1.2" />
+            <polygon points="454,378 522,412 522,434 454,400" fill="#1e293b" stroke="#f59e0b" stroke-width="0.8" />
+            <polygon points="608,372 532,410 532,452 608,414" fill="#090d16" stroke="#64748b" stroke-width="1.2" />
+          </g>
+
+          <g id="guide-lines">
+            <line class="guide-line" x1="526" y1="369" x2="391" y2="437" />
+            <line class="guide-line" x1="532" y1="138" x2="462" y2="173" />
+            <line class="guide-line" x1="584" y1="222" x2="349" y2="340" />
+            <line class="guide-line" x1="630" y1="250" x2="460" y2="335" />
+            <line class="guide-line" x1="590" y1="265" x2="435" y2="343" />
+            <line class="guide-line" x1="578" y1="280" x2="363" y2="388" />
+          </g>
+
+          <!-- 2. Материнская плата -->
+          <g id="part-mobo" class="iso-part" filter="url(#drop-shadow)" onclick="onSvgPartClick('part-mobo', event)">
+            <polygon points="524,142 664,212 672,208 532,138" fill="#1e3a5f" stroke="#38bdf8" stroke-width="0.6" />
+            <polygon points="664,212 672,208 672,378 664,382" fill="#0f2942" stroke="#38bdf8" stroke-width="0.6" />
+            <polygon points="524,142 664,212 664,382 524,312" fill="url(#grad-pcb)" stroke="#0284c7" stroke-width="1.5" />
+            <polyline id="data-bus-bios" points="648,242 648,315 582,315" fill="none" stroke="#f59e0b" stroke-width="2.8" stroke-dasharray="6 4" opacity="0.18" />
+            <polyline id="data-bus-ssd" points="648,242 625,282 595,267" fill="none" stroke="#10b981" stroke-width="2.8" stroke-dasharray="6 4" opacity="0.18" />
+            <polygon points="518,163 542,175 554,169 530,157" fill="url(#grad-metal-top)" />
+            <polygon points="518,163 542,175 542,235 518,223" fill="url(#grad-metal-side)" stroke="#94a3b8" stroke-width="0.7" />
+            <polygon points="550,159 606,187 616,182 560,154" fill="url(#grad-metal-top)" />
+            <polygon points="550,159 606,187 606,201 550,173" fill="url(#grad-metal-side)" stroke="#94a3b8" stroke-width="0.7" />
+            <g id="socket-cpu">
+              <polygon points="562,191 606,213 606,255 562,233" fill="#94a3b8" stroke="#e2e8f0" stroke-width="1" />
+              <polygon points="568,199 600,215 600,247 568,231" fill="#ca8a04" stroke="#fef08a" stroke-width="0.7" />
+            </g>
+            <g id="slots-ram">
+              <polygon points="618,217 622,219 622,273 618,271" fill="#1e293b" stroke="#64748b" stroke-width="0.7" />
+              <polygon points="624,220 628,222 628,276 624,274" fill="#0369a1" stroke="#38bdf8" stroke-width="0.8" />
+              <polygon points="630,223 634,225 634,279 630,277" fill="#1e293b" stroke="#64748b" stroke-width="0.7" />
+              <polygon points="636,226 640,228 640,282 636,280" fill="#0369a1" stroke="#38bdf8" stroke-width="0.8" />
+            </g>
+            <g id="slot-m2">
+              <polygon points="564,245 616,271 616,281 564,255" fill="rgba(16, 185, 129, 0.12)" stroke="#10b981" stroke-dasharray="3 2" />
+              <polygon points="610,273 618,277 618,289 610,285" fill="#e2e8f0" stroke="#64748b" stroke-width="0.8" />
+            </g>
+            <g id="slot-pcie">
+              <polygon points="542,259 614,295 620,292 548,256" fill="#cbd5e1" />
+              <polygon points="542,259 614,295 614,303 542,267" fill="#334155" stroke="#e2e8f0" />
+            </g>
+            <g id="bios-chip">
+              <polygon points="558,297 582,309 588,306 564,294" fill="#475569" />
+              <polygon points="558,297 582,309 582,325 558,313" fill="#1e293b" stroke="#f59e0b" stroke-width="1.5" />
+              <circle cx="563" cy="304" r="1.8" fill="#f59e0b" />
+            </g>
+            <polygon points="602,309 642,329 652,324 612,304" fill="url(#grad-metal-top)" />
+            <polygon points="602,309 642,329 642,363 602,343" fill="url(#grad-metal-side)" stroke="#38bdf8" stroke-width="1" />
+          </g>
+
+          <!-- 3. Процессор -->
+          <g id="part-cpu" class="iso-part" filter="url(#drop-shadow)" onclick="onSvgPartClick('part-cpu', event)">
+            <polygon points="560,200 596,218 602,215 566,197" fill="#15803d" />
+            <polygon points="560,200 596,218 596,252 560,234" fill="#065f46" stroke="#facc15" stroke-width="1.2" />
+            <polygon points="563,204 591,218 591,246 563,232" fill="url(#grad-metal-top)" stroke="#e2e8f0" stroke-width="1" />
+          </g>
+
+          <!-- 4. M.2 SSD -->
+          <g id="part-ssd" class="iso-part" filter="url(#drop-shadow)" onclick="onSvgPartClick('part-ssd', event)">
+            <polygon points="558,247 610,273 610,285 558,259" fill="#090d16" stroke="#10b981" stroke-width="1.2" />
+            <polygon points="606,271 612,274 612,284 606,281" fill="#facc15" />
+            <polygon points="593,266 603,271 603,279 593,274" fill="#94a3b8" />
+            <polygon points="565,252 577,258 577,266 565,260" fill="#1e293b" stroke="#475569" />
+            <polygon points="579,259 591,265 591,273 579,267" fill="#1e293b" stroke="#475569" />
+          </g>
+
+          <!-- 5. ОЗУ DDR5 -->
+          <g id="part-ram" class="iso-part" filter="url(#drop-shadow)" onclick="onSvgPartClick('part-ram', event)">
+            <g>
+              <polygon points="596,232 624,218 624,272 596,286" fill="#1e293b" stroke="#64748b" />
+              <polygon points="596,232 601,235 629,221 624,218" fill="url(#grad-rgb)" />
+              <polygon points="601,235 629,221 629,275 601,289" fill="#0f172a" stroke="#38bdf8" />
+            </g>
+            <g transform="translate(12, 6)">
+              <polygon points="596,232 624,218 624,272 596,286" fill="#1e293b" stroke="#64748b" />
+              <polygon points="596,232 601,235 629,221 624,218" fill="url(#grad-rgb)" />
+              <polygon points="601,235 629,221 629,275 601,289" fill="#0f172a" stroke="#38bdf8" />
+            </g>
+          </g>
+
+          <!-- 6. Кулер -->
+          <g id="part-cooler" class="iso-part" filter="url(#drop-shadow)" onclick="onSvgPartClick('part-cooler', event)">
+            <polygon points="548,192 596,216 548,240 500,216" fill="url(#grad-metal-top)" stroke="#cbd5e1" />
+            <polygon points="596,216 548,240 548,288 596,264" fill="#1e293b" stroke="#64748b" />
+            <ellipse cx="574" cy="252" rx="14" ry="20" transform="skewY(-26.5)" fill="#090d16" stroke="#38bdf8" stroke-width="1.2" />
+            <polygon points="500,216 548,240 548,288 500,264" fill="#0f172a" stroke="#94a3b8" stroke-width="1.2" />
+          </g>
+
+          <!-- 7. Видеокарта -->
+          <g id="part-gpu" class="iso-part" filter="url(#drop-shadow)" onclick="onSvgPartClick('part-gpu', event)">
+            <polygon points="520,248 446,285 446,317 520,280" fill="#64748b" stroke="#cbd5e1" />
+            <polygon points="520,248 656,316 588,350 452,282" fill="url(#grad-gpu-top)" stroke="#94a3b8" stroke-width="1.4" />
+            <polygon points="585,288 638,314 602,332 549,306" fill="#090d16" stroke="#475569" />
+            <polygon points="452,282 588,350 588,378 452,310" fill="#0f172a" stroke="#64748b" stroke-width="1.3" />
+            <polygon points="465,294 535,329 535,335 465,300" fill="url(#grad-rgb)" />
+            <polygon points="656,316 588,350 588,378 656,344" fill="#1e293b" stroke="#94a3b8" />
+          </g>
+
+          <!-- 8. Боковое стекло -->
+          <g id="case-glass-panel" class="iso-part" style="pointer-events: none;">
+            <polygon points="410,155 630,265 630,525 410,415" fill="url(#grad-glass)" stroke="rgba(125, 211, 252, 0.45)" stroke-width="1.5" />
+          </g>
+
+          <!-- Посадочные слоты конструктора -->
+          <g id="builder-dropzones">
+            <g id="zone-part-psu" class="slot-zone" onclick="tryPlaceInSlot('part-psu', event)">
+              <polygon points="520,328 608,372 532,452 444,408" />
+              <text x="526" y="405" fill="#7dd3fc" font-size="10.5" font-weight="700" text-anchor="middle">[Отсек БП]</text>
+            </g>
+            <g id="zone-part-mobo" class="slot-zone" onclick="tryPlaceInSlot('part-mobo', event)">
+              <polygon points="524,142 664,212 664,382 524,312" />
+              <text x="594" y="255" fill="#7dd3fc" font-size="11" font-weight="700" text-anchor="middle">[Стойки ATX платы]</text>
+            </g>
+            <g id="zone-part-cpu" class="slot-zone is-hidden-zone" onclick="tryPlaceInSlot('part-cpu', event)">
+              <polygon points="558,189 608,214 608,257 558,232" />
+              <text x="583" y="226" fill="#fef08a" font-size="9.5" font-weight="700" text-anchor="middle">[Сокет CPU]</text>
+            </g>
+            <g id="zone-part-ram" class="slot-zone is-hidden-zone" onclick="tryPlaceInSlot('part-ram', event)">
+              <polygon points="615,214 644,228 644,286 615,274" />
+              <text x="630" y="212" fill="#7dd3fc" font-size="9.5" font-weight="700" text-anchor="middle">[DDR5]</text>
+            </g>
+            <g id="zone-part-ssd" class="slot-zone is-hidden-zone" onclick="tryPlaceInSlot('part-ssd', event)">
+              <polygon points="556,243 620,275 620,290 556,258" />
+              <text x="588" y="272" fill="#6ee7b7" font-size="9.5" font-weight="700" text-anchor="middle">[Слот M.2]</text>
+            </g>
+            <g id="zone-part-cooler" class="slot-zone is-hidden-zone" onclick="tryPlaceInSlot('part-cooler', event)">
+              <polygon points="500,192 596,216 596,288 500,264" />
+              <text x="548" y="205" fill="#7dd3fc" font-size="9.5" font-weight="700" text-anchor="middle">[Кулер]</text>
+            </g>
+            <g id="zone-part-gpu" class="slot-zone is-hidden-zone" onclick="tryPlaceInSlot('part-gpu', event)">
+              <polygon points="535,254 622,297 622,316 535,273" />
+              <text x="578" y="294" fill="#c084fc" font-size="9.5" font-weight="700" text-anchor="middle">[PCIe x16]</text>
+            </g>
+            <g id="zone-case-glass-panel" class="slot-zone is-hidden-zone" onclick="tryPlaceInSlot('case-glass-panel', event)">
+              <polygon points="410,155 630,265 630,525 410,415" />
+              <text x="520" y="335" fill="#7dd3fc" font-size="12" font-weight="700" text-anchor="middle">[Закрыть стекло]</text>
+            </g>
+          </g>
+        </g>
+      </svg>
+    </div>
+
+    <!-- ПРАВАЯ КОЛОНКА: ИНСПЕКТОР И ИНЖЕНЕРНАЯ СПРАВКА -->
+    <div class="inspector-Panel">
+      <div>
+        <span class="inspector-Badge" id="inspBadge">#part-cpu • 3D Модель</span>
+        <h3 class="inspector-Title" id="inspTitle">Центральный процессор</h3>
+        <p class="inspector-Desc" id="inspDesc">
+          Индивидуальная 3-слойная изометрическая 3D-модель компонента. Нажмите «Разобрать деталь на слои», чтобы изучить внутреннюю архитектуру.
+        </p>
+
+        <div class="specs-List" id="inspSpecs"></div>
+
+        <div class="subparts-Box">
+          <div class="subparts-Title" id="subpartsHeader">Внутренние слои 3D-модели</div>
+          <ul class="subparts-Ul" id="inspSubparts"></ul>
+        </div>
+      </div>
+
+      <div class="lab-RoleBox">
+        <div class="lab-RoleTitle">Инженерный разбор и диагностика</div>
+        <div id="inspRole"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="./lab.js"></script>
+</body>
+</html>

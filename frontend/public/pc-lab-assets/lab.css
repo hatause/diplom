@@ -1,0 +1,780 @@
+
+    :root {
+      --bg-dark: #050811;
+      --panel-bg: rgba(15, 23, 42, 0.94);
+      --border-subtle: rgba(148, 163, 184, 0.18);
+      --accent-cyan: #38bdf8;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-red: #ef4444;
+      --accent-purple: #a855f7;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: radial-gradient(circle at 50% 35%, #162238 0%, var(--bg-dark) 78%);
+      color: var(--text-main);
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+    }
+
+    .lab-App {
+      width: 100%;
+      max-width: 1400px;
+      background: rgba(9, 13, 24, 0.88);
+      border: 1px solid var(--border-subtle);
+      border-radius: 18px;
+      box-shadow: 0 28px 80px rgba(0, 0, 0, 0.85);
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    /* ВЕРХНЯЯ ПАНЕЛЬ НАВИГАЦИИ ПО 5 МОДУЛЯМ */
+    .lab-Header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 11px 16px;
+      background: var(--panel-bg);
+      border-bottom: 1px solid var(--border-subtle);
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .mode-Tabs {
+      display: flex;
+      background: rgba(2, 6, 23, 0.78);
+      padding: 4px;
+      border-radius: 10px;
+      border: 1px solid var(--border-subtle);
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .mode-Tab {
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid transparent;
+      padding: 7px 12px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .mode-Tab:hover {
+      color: var(--text-main);
+      background: rgba(30, 41, 59, 0.55);
+    }
+
+    .mode-Tab.is-active {
+      background: rgba(56, 189, 248, 0.18);
+      color: #fff;
+      border-color: rgba(56, 189, 248, 0.48);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+    }
+
+    .lab-Actions {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+    }
+
+    .btn-Action {
+      background: rgba(30, 41, 59, 0.88);
+      color: var(--text-main);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      padding: 7px 12px;
+      border-radius: 8px;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-Action:hover, .btn-Action.is-active {
+      border-color: var(--accent-cyan);
+      background: rgba(56, 189, 248, 0.2);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+    }
+
+    /* ОСНОВНАЯ СЕТКА (Сайдбар + Центральная Сцена + Инспектор) */
+    .lab-Body {
+      display: grid;
+      grid-template-columns: 265px 1fr 330px;
+      min-height: 670px;
+    }
+
+    /* ЛЕВАЯ ПАНЕЛЬ */
+    .parts-Sidebar {
+      background: rgba(15, 23, 42, 0.72);
+      border-right: 1px solid var(--border-subtle);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .sidebar-Heading {
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin: 4px 4px 5px;
+    }
+
+    .part-Btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      text-align: left;
+      background: rgba(30, 41, 59, 0.45);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      color: var(--text-main);
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .part-Btn:hover {
+      background: rgba(51, 65, 85, 0.65);
+      border-color: rgba(148, 163, 184, 0.3);
+    }
+
+    .part-Btn.is-selected {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: var(--accent-cyan);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .part-Btn.is-installed {
+      background: rgba(16, 185, 129, 0.14);
+      border-color: rgba(16, 185, 129, 0.42);
+      color: #a7f3d0;
+    }
+
+    .part-Badge {
+      font-size: 10px;
+      color: var(--text-muted);
+      background: rgba(15, 23, 42, 0.85);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+
+    .part-Btn.is-selected .part-Badge {
+      background: var(--accent-cyan);
+      color: #020617;
+      font-weight: 700;
+    }
+
+    .build-ProgressBox {
+      background: rgba(2, 6, 23, 0.6);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-bottom: 6px;
+    }
+
+    .progress-Header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+
+    .progress-Track {
+      width: 100%;
+      height: 7px;
+      background: rgba(30, 41, 59, 0.9);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .progress-Fill {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, var(--accent-cyan), var(--accent-emerald));
+      transition: width 0.35s ease;
+    }
+
+    /* Блок настройки ошибок для Конструктора Windows (в сайдбаре) */
+    .fault-ConfigBox {
+      margin-top: 8px;
+      background: rgba(127, 29, 29, 0.16);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      border-radius: 10px;
+      padding: 10px;
+      display: none;
+    }
+
+    .fault-ConfigBox.is-visible { display: block; }
+
+    .fault-Title {
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #fca5a5;
+      margin-bottom: 6px;
+    }
+
+    .fault-Toggle {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 11px;
+      color: #e2e8f0;
+      margin-bottom: 5px;
+      cursor: pointer;
+    }
+
+    /* ЦЕНТРАЛЬНАЯ ОБЛАСТЬ СЦЕНЫ */
+    .canvas-Stage {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .builder-Banner {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.94);
+      border: 1px solid var(--accent-cyan);
+      padding: 8px 16px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-main);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+      z-index: 30;
+      pointer-events: none;
+      transition: all 0.25s ease;
+      white-space: nowrap;
+    }
+
+    .builder-Banner.is-error {
+      border-color: var(--accent-red);
+      background: rgba(69, 10, 10, 0.95);
+      color: #fecaca;
+    }
+
+    .builder-Banner.is-success {
+      border-color: var(--accent-emerald);
+      background: rgba(6, 78, 59, 0.95);
+      color: #a7f3d0;
+    }
+
+    /* ================================================================= */
+    /* ВКЛАДКА 1: ОТДЕЛЬНЫЙ 3D-СТЕНД ДЛЯ КАЖДОЙ ДЕТАЛИ (#singlePartSvg)  */
+    /* ================================================================= */
+    #singlePartSvg {
+      display: block;
+      transition: transform 0.5s ease;
+    }
+
+    .sub-layer {
+      transition: transform 0.75s cubic-bezier(0.22, 1, 0.36, 1), filter 0.35s ease;
+    }
+
+    /* Послойный разлет внутренней конструкции детали (Exploded Part Anatomy) */
+    .part-dissected .layer-top    { transform: translate(0px, -95px); }
+    .part-dissected .layer-mid    { transform: translate(0px, 0px); }
+    .part-dissected .layer-bottom { transform: translate(0px, 95px); }
+
+    .part-xray .sub-layer {
+      opacity: 0.82;
+      filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.45));
+    }
+
+    .dissect-guide {
+      stroke: var(--accent-cyan);
+      stroke-width: 1.4;
+      stroke-dasharray: 5 5;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+
+    .part-dissected .dissect-guide {
+      opacity: 0.75;
+    }
+
+    /* ================================================================= */
+    /* ОБЩИЙ 3D-СТЕНД КОРПУСА ПК (#mainPcSvg)                            */
+    /* ================================================================= */
+    #camera-rig {
+      transition: transform 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+      transform-origin: 520px 310px;
+    }
+
+    .iso-part {
+      transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+                  opacity 0.45s ease,
+                  filter 0.35s ease;
+      cursor: pointer;
+    }
+
+    .is-builder-mode .iso-part.is-uninstalled {
+      transform: translate(-180px, -110px) scale(0.88);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .is-builder-mode .iso-part.is-installed-part {
+      transform: translate(0px, 0px) scale(1);
+      opacity: 1;
+    }
+
+    #iso-usb {
+      transform: translate(0px, -55px);
+      opacity: 0;
+      transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease;
+      pointer-events: none;
+    }
+
+    .usb-plugged #iso-usb {
+      transform: translate(0px, 0px);
+      opacity: 1;
+    }
+
+    #builder-dropzones { display: none; }
+    .is-builder-mode #builder-dropzones { display: block; }
+
+    .slot-zone {
+      fill: rgba(56, 189, 248, 0.08);
+      stroke: rgba(56, 189, 248, 0.55);
+      stroke-width: 1.5;
+      stroke-dasharray: 5 4;
+      cursor: pointer;
+      transition: all 0.22s ease;
+    }
+
+    .slot-zone:hover {
+      fill: rgba(56, 189, 248, 0.26);
+      stroke: #fff;
+      stroke-width: 2;
+    }
+
+    .slot-zone.is-hinted {
+      fill: rgba(16, 185, 129, 0.28) !important;
+      stroke: var(--accent-emerald) !important;
+      stroke-width: 2.5 !important;
+    }
+
+    .slot-zone.is-wrong {
+      fill: rgba(239, 68, 68, 0.38) !important;
+      stroke: var(--accent-red) !important;
+    }
+
+    .slot-zone.is-hidden-zone { display: none; }
+
+    .is-exploded #part-psu        { transform: translate(-135px, 68px); }
+    .is-exploded #part-mobo       { transform: translate(-70px, 35px); }
+    .is-exploded #part-cpu        { transform: translate(-145px, 72px); }
+    .is-exploded #part-ssd        { transform: translate(-155px, 78px); }
+    .is-exploded #part-ram        { transform: translate(-170px, 85px); }
+    .is-exploded #part-cooler     { transform: translate(-235px, 118px); }
+    .is-exploded #part-gpu        { transform: translate(-215px, 108px); }
+    .is-exploded #case-glass-panel{ transform: translate(-300px, 150px); opacity: 0.25; }
+
+    .guide-line {
+      stroke: var(--accent-cyan);
+      stroke-width: 1.3;
+      stroke-dasharray: 5 5;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      pointer-events: none;
+    }
+    .is-exploded .guide-line { opacity: 0.65; animation: dashMove 10s linear infinite; }
+    @keyframes dashMove { to { stroke-dashoffset: -100; } }
+
+    .bios-pulse #bios-chip { filter: drop-shadow(0 0 16px var(--accent-amber)) brightness(1.3); }
+    .bios-pulse #data-bus-bios { opacity: 1 !important; animation: dashMove 1.8s linear infinite; }
+    .ssd-pulse #part-ssd { filter: drop-shadow(0 0 16px var(--accent-emerald)) brightness(1.25); }
+    .ssd-pulse #data-bus-ssd { opacity: 1 !important; animation: dashMove 1.6s linear infinite; }
+
+    /* ================================================================= */
+    /* ИНТЕРАКТИВНЫЙ ЭКРАН МОНИТОРА (BIOS + КОНСТРУКТОР WINDOWS 11)      */
+    /* ================================================================= */
+    .virtual-MonitorModal {
+      position: absolute;
+      left: 14px;
+      bottom: 14px;
+      width: 525px;
+      background: rgba(9, 13, 24, 0.96);
+      backdrop-filter: blur(16px);
+      border: 2px solid #334155;
+      border-radius: 14px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.88), 0 0 28px rgba(56, 189, 248, 0.16);
+      overflow: hidden;
+      z-index: 25;
+      display: none;
+    }
+
+    .virtual-MonitorModal.is-open { display: block; }
+    .virtual-MonitorModal.is-minimized .monitor-ScreenBody { display: none; }
+
+    .monitor-TopBezel {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 14px;
+      background: #1e293b;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+      font-size: 11.5px;
+      font-weight: 600;
+    }
+
+    .monitor-PowerLed {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-emerald);
+      box-shadow: 0 0 8px var(--accent-emerald);
+      margin-right: 6px;
+    }
+
+    .monitor-ScreenBody {
+      padding: 15px;
+      min-height: 360px;
+      max-height: 540px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .uefi-Box {
+      font-family: 'JetBrains Mono', 'Consolas', monospace;
+      color: #e2e8f0;
+    }
+
+    .uefi-Header {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(245, 158, 11, 0.45);
+      padding-bottom: 7px;
+      margin-bottom: 10px;
+      color: var(--accent-amber);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .uefi-Grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .uefi-Card {
+      background: rgba(30, 41, 59, 0.65);
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .uefi-Card strong {
+      display: block;
+      color: var(--accent-cyan);
+      margin-bottom: 3px;
+    }
+
+    /* Блоки Конструктора Windows и Диагностики Ошибок */
+    .win-Box {
+      background: linear-gradient(145deg, #0f172a 0%, #172554 100%);
+      border: 1px solid rgba(96, 165, 250, 0.38);
+      border-radius: 10px;
+      padding: 13px;
+    }
+
+    .win-Title {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #93c5fd;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .error-AlertBox {
+      background: rgba(127, 29, 29, 0.35);
+      border: 1px solid #ef4444;
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin: 8px 0;
+      font-size: 11.5px;
+      line-height: 1.45;
+      color: #fecaca;
+    }
+
+    .error-AlertBox strong {
+      color: #f87171;
+      display: block;
+      margin-bottom: 4px;
+      font-size: 12px;
+    }
+
+    .solution-Cards {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .sol-Btn {
+      text-align: left;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid var(--accent-cyan);
+      color: #f8fafc;
+      padding: 8px 11px;
+      border-radius: 7px;
+      font-size: 11.5px;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .sol-Btn:hover {
+      background: rgba(56, 189, 248, 0.22);
+      border-color: #fff;
+    }
+
+    /* Консоль Shift + F10 (CMD / Diskpart / Regedit) */
+    .cmd-Terminal {
+      background: #020617;
+      border: 1px solid #475569;
+      border-radius: 7px;
+      padding: 10px;
+      font-family: 'Consolas', 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: #cbd5e1;
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+
+    .cmd-Header {
+      display: flex;
+      justify-content: space-between;
+      color: #94a3b8;
+      border-bottom: 1px solid #1e293b;
+      padding-bottom: 4px;
+      margin-bottom: 6px;
+      font-size: 10px;
+    }
+
+    .cmd-Line { color: #38bdf8; }
+    .cmd-Success { color: #10b981; font-weight: 700; }
+
+    .partition-Table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+      margin: 7px 0;
+    }
+
+    .partition-Table th, .partition-Table td {
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      padding: 5px 7px;
+      text-align: left;
+    }
+
+    .partition-Table th {
+      background: rgba(30, 41, 59, 0.9);
+      color: var(--accent-cyan);
+    }
+
+    .sim-Btn {
+      width: 100%;
+      padding: 9px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--accent-cyan);
+      background: rgba(56, 189, 248, 0.22);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .sim-Btn:hover:not(:disabled) {
+      background: rgba(56, 189, 248, 0.38);
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.35);
+    }
+
+    .sim-Btn:disabled {
+      opacity: 0.42;
+      cursor: not-allowed;
+    }
+
+    .sim-Btn.is-amber { border-color: var(--accent-amber); background: rgba(245, 158, 11, 0.24); }
+    .sim-Btn.is-emerald { border-color: var(--accent-emerald); background: rgba(16, 185, 129, 0.25); }
+
+    .win11-Desktop {
+      background: radial-gradient(circle at 50% 35%, #2563eb 0%, #1e1b4b 65%, #090d16 100%);
+      border-radius: 9px;
+      padding: 14px;
+      min-height: 260px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border: 1px solid rgba(147, 197, 253, 0.45);
+    }
+
+    .win11-Taskbar {
+      background: rgba(15, 23, 42, 0.85);
+      border-radius: 6px;
+      padding: 6px 12px;
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      font-size: 11px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    /* ПРАВАЯ КОЛОНКА: ИНСПЕКТОР И БАЗА РЕШЕНИЙ */
+    .inspector-Panel {
+      background: rgba(15, 23, 42, 0.8);
+      border-left: 1px solid var(--border-subtle);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .inspector-Badge {
+      display: inline-block;
+      font-size: 10.5px;
+      font-family: monospace;
+      color: var(--accent-cyan);
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 3px 8px;
+      border-radius: 5px;
+      margin-bottom: 6px;
+    }
+
+    .inspector-Title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+    .inspector-Desc { font-size: 12px; color: var(--text-muted); line-height: 1.48; margin-bottom: 10px; }
+
+    .specs-List {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 9px;
+    }
+
+    .spec-Row { display: flex; justify-content: space-between; font-size: 11.5px; }
+    .spec-Key { color: var(--text-muted); }
+    .spec-Val { color: var(--text-main); font-weight: 600; text-align: right; }
+
+    .subparts-Box {
+      margin-top: 10px;
+      background: rgba(2, 6, 23, 0.58);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 11px;
+    }
+
+    .subparts-Title {
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--accent-cyan);
+      margin-bottom: 6px;
+    }
+
+    .subparts-Ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font-size: 11.5px;
+      color: #cbd5e1;
+    }
+    .subparts-Ul li::before { content: "• "; color: var(--accent-cyan); font-weight: bold; }
+
+    .lab-RoleBox {
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid rgba(16, 185, 129, 0.28);
+      border-radius: 10px;
+      padding: 11px;
+      font-size: 11.5px;
+      line-height: 1.45;
+    }
+    .lab-RoleTitle {
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--accent-emerald);
+      margin-bottom: 4px;
+    }
+  /* The reference lives in its own document; resets cannot affect the host site. */
+body {display:block; padding:0; min-height:0; background:#050811;}
+.lab-App {max-width:none; border-radius:0; box-shadow:none;}
+.lab-Body {grid-template-columns:220px minmax(0,1fr) 260px; min-height:740px;}
+.lab-Body > * {min-width:0;}
+.canvas-Stage {display:grid; grid-template-columns:minmax(0,1fr); align-content:start; padding:12px; gap:12px; overflow:visible;}
+.canvas-Stage > svg {width:100%; height:auto; min-width:0; grid-row:2;}
+.builder-Banner {position:static; transform:none; white-space:normal; border-radius:10px; line-height:1.5; grid-row:1;}
+.virtual-MonitorModal {position:static; width:100%; grid-row:3; box-shadow:none;}
+#camera-rig {transform:translate(0,0) scale(1) !important;}
+#case-glass-panel, .guide-line, .dissect-guide, #callouts-layer {pointer-events:none;}
+.slot-zone:focus-visible, button:focus-visible, input:focus-visible {outline:3px solid #38bdf8;outline-offset:3px;}
+.lab-note {font-size:12px;line-height:1.6;padding:10px;color:#cbd5e1;overflow-wrap:anywhere;}
+.lab-note a {color:#7dd3fc;}
+button, code, .spec-Val, .cmd-Terminal {overflow-wrap:anywhere;}
+.partition-Table {table-layout:fixed;}
+.partition-Table th,.partition-Table td {overflow-wrap:anywhere;}
+.is-paused *, .is-paused *::before,.is-paused *::after {animation-play-state:paused !important;}
+@media (max-width:1100px) {
+ .lab-Body {grid-template-columns:190px minmax(0,1fr);}
+ .inspector-Panel {grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;}
+}
+@media (max-width:600px) {
+ .lab-Header {padding:10px;}
+ .lab-Body {display:flex;flex-direction:column;}
+ .parts-Sidebar {display:grid;grid-template-columns:1fr 1fr;padding:10px;}
+ .sidebar-Heading,.fault-ConfigBox {grid-column:1/-1;}
+ .canvas-Stage {order:0;padding:8px;}
+ .inspector-Panel {display:block;}
+ .part-Btn {font-size:11px;gap:4px;padding:8px 5px;}
+ .part-Badge {font-size:9px;}
+ .mode-Tab {flex:1 1 44%;font-size:11px;}
+ .lab-Actions button {font-size:11px;padding:8px;}
+ .monitor-ScreenBody {padding:10px;}
+ .uefi-Grid {grid-template-columns:1fr;}
+ .win11-Taskbar {flex-wrap:wrap;}
+}
+@media (prefers-reduced-motion:reduce) {
+ *,*::before,*::after {animation:none !important;transition:none !important;scroll-behavior:auto !important;}
+}
+
+.setup-locales {display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px;font-size:12px;}
+.setup-locales label {display:grid;gap:6px;flex:1;min-width:120px;}
+.setup-locales select {padding:8px;background:#172338;color:#f8fafc;border:1px solid #475569;border-radius:6px;}
+/* The page scrolls as one surface, including long setup tables on phones. */
+.monitor-ScreenBody {min-height:0;max-height:none;overflow:visible;}
