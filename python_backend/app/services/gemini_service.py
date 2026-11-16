@@ -18,6 +18,19 @@ from app.core.errors import ApiError
 
 logger = logging.getLogger(__name__)
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
+MAX_OUTPUT_TOKENS = 16000
+THINKING_BUDGET = 1024
+BUDGETED_THINKING_MODELS = frozenset({'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro'})
+
+
+class _TruncatedResponseError(ValueError):
+    """The provider exhausted its output budget; partial content is not usable."""
+
+
+def _usage_count(payload: dict, name: str) -> int | None:
+    usage = payload.get('usageMetadata')
+    value = usage.get(name) if isinstance(usage, dict) else None
+    return value if type(value) is int and 0 <= value <= 100_000_000 else None
 
 
 def clean_json_text(text: str) -> str:
@@ -126,7 +139,12 @@ class GeminiService:
             self._slots.release()
 
     async def _request(self, system_prompt, contents, max_output_tokens, json_mode, response_schema=None):
-        config = {'maxOutputTokens': min(max_output_tokens, 16000)}
+        config = {'maxOutputTokens': min(max_output_tokens, MAX_OUTPUT_TOKENS)}
+        if self.model in BUDGETED_THINKING_MODELS:
+            # Gemini 2.5 counts thinking inside maxOutputTokens. Reserve room for
+            # the requested answer instead of letting dynamic thinking consume it.
+            config['thinkingConfig'] = {'thinkingBudget': THINKING_BUDGET}
+            config['maxOutputTokens'] = min(max_output_tokens + THINKING_BUDGET, MAX_OUTPUT_TOKENS)
         if json_mode:
             config['responseMimeType'] = 'application/json'
         if response_schema:
@@ -144,8 +162,22 @@ class GeminiService:
                         if len(raw) > MAX_RESPONSE_BYTES:
                             raise ApiError(502, 'AI вернул слишком большой ответ.')
                     try:
-                        return self._response_text(json.loads(raw))
+                        data = json.loads(raw)
+                        return self._response_text(data)
+                    except _TruncatedResponseError:
+                        # Only numeric counters and a fixed reason are logged.
+                        # Do not expose text, thought parts, headers or raw errors.
+                        logger.warning(
+                            'Gemini response incomplete: reason=MAX_TOKENS max_output_tokens=%s '
+                            'thinking_tokens=%s output_tokens=%s',
+                            config['maxOutputTokens'], _usage_count(data, 'thoughtsTokenCount'),
+                            _usage_count(data, 'candidatesTokenCount'))
+                        if attempt == 0 and config['maxOutputTokens'] < MAX_OUTPUT_TOKENS:
+                            config['maxOutputTokens'] = min(config['maxOutputTokens'] * 2, MAX_OUTPUT_TOKENS)
+                            continue
+                        raise ApiError(502, 'AI не смог завершить ответ. Разделите вопрос на несколько частей и повторите.') from None
                     except (ValueError, TypeError, KeyError, IndexError):
+                        logger.warning('Gemini response incomplete: reason=INVALID_RESPONSE')
                         raise ApiError(502, 'AI вернул неполный ответ. Уточните запрос и повторите.') from None
             # Log only status, never request headers, URLs containing credentials or provider body.
             logger.warning('Gemini request failed: HTTP %s', status)
@@ -163,17 +195,32 @@ class GeminiService:
 
     @staticmethod
     def _response_text(payload: dict) -> str:
-        if payload.get('promptFeedback', {}).get('blockReason'):
+        if not isinstance(payload, dict):
+            raise ValueError('Expected a response object')
+        feedback = payload.get('promptFeedback') or {}
+        if not isinstance(feedback, dict):
+            raise ValueError('Invalid prompt feedback')
+        if feedback.get('blockReason'):
             raise ApiError(422, 'AI-провайдер отклонил содержимое запроса или вложения. Используйте другой учебный материал.')
         candidates = payload.get('candidates') or []
-        if not candidates:
+        if not isinstance(candidates, list) or not candidates:
             raise ValueError('No answer')
         candidate = candidates[0]
+        if not isinstance(candidate, dict):
+            raise ValueError('Invalid answer')
         if candidate.get('finishReason') in ('SAFETY', 'PROHIBITED_CONTENT', 'BLOCKLIST', 'RECITATION', 'SPII', 'IMAGE_SAFETY'):
             raise ApiError(422, 'AI-провайдер не разрешил обработку этого материала. Используйте другой учебный материал.')
+        if candidate.get('finishReason') == 'MAX_TOKENS':
+            raise _TruncatedResponseError('Output limit reached')
         if candidate.get('finishReason') != 'STOP':
             raise ValueError('Incomplete or blocked answer')
-        text = ''.join(part.get('text', '') for part in candidate.get('content', {}).get('parts', []) if not part.get('thought'))
+        content = candidate.get('content')
+        if not isinstance(content, dict) or not isinstance(content.get('parts'), list):
+            raise ValueError('Invalid answer content')
+        parts = content['parts']
+        if any(not isinstance(part, dict) or not isinstance(part.get('text', ''), str) for part in parts):
+            raise ValueError('Invalid answer parts')
+        text = ''.join(part.get('text', '') for part in parts if not part.get('thought'))
         if not text.strip():
             raise ValueError('Empty answer')
         return text

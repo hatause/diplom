@@ -5,11 +5,17 @@ import { errorText } from '@/api/companion';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Clock, Flag, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import * as Dialog from '@radix-ui/react-dialog';
+import { useAuthStore } from '@/store/auth.store';
+import { attemptDraftKey, readAttemptDraft, clearAttemptDraft, type AttemptProgress } from '@/features/tests/attemptDraft';
 
 export function TestPlayerPage() {
   const { attemptId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const userId = useAuthStore(state => state.user?.id);
+  const draftKey = userId && attemptId ? attemptDraftKey(userId, attemptId) : null;
+  const restoredDraftKey = useRef<string | null>(null);
   const [test, setTest] = useState<any>(location.state?.test || null);
   const [ready, setReady] = useState(false);
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -31,21 +37,27 @@ export function TestPlayerPage() {
   useEffect(() => {
     let cancelled = false;
     setReady(false);
+    restoredDraftKey.current = null;
     if (attemptId) {
       api.get(`/attempts/${attemptId}`).then(res => {
         if (cancelled) return;
         const attempt = res.data.data;
         if (attempt.status === 'COMPLETED') {
+          clearAttemptDraft(draftKey);
           navigate(`/test/${attemptId}/result`, { replace: true });
           return;
         }
         if (attempt.status !== 'IN_PROGRESS') {
+          clearAttemptDraft(draftKey);
           toast.error('Эта попытка отменена. Начните новый тест.');
           navigate('/history', { replace: true });
           return;
         }
         setTest(attempt.test);
-        const saved = attempt.savedProgress;
+        const local = draftKey ? readAttemptDraft(draftKey, attempt.test.questions.map((question: { id: string }) => question.id)) : null;
+        // A newer server session takes precedence over an older local copy.
+        const saved = local && local.elapsed >= (attempt.savedProgress?.elapsed || 0) ? local : attempt.savedProgress;
+        restoredDraftKey.current = draftKey;
         setAnswers(saved?.answers || {});
         setTimeSpent(saved?.timeSpent || {});
         setElapsed(Math.max(0, saved?.elapsed || 0));
@@ -59,26 +71,45 @@ export function TestPlayerPage() {
       });
     }
     return () => { cancelled = true; };
-  }, [attemptId, navigate]);
+  }, [attemptId, draftKey, navigate]);
 
   const progressRef = useRef({ answers, currentIdx, elapsed, timeSpent, test });
   progressRef.current = { answers, currentIdx, elapsed, timeSpent, test };
+
+  const snapshotProgress = useCallback((): AttemptProgress => {
+    const snapshot = progressRef.current;
+    const times = { ...snapshot.timeSpent };
+    const questionId = snapshot.test?.questions?.[snapshot.currentIdx]?.id;
+    if (questionId) times[questionId] = (times[questionId] || 0) + Math.round((Date.now() - questionStartRef.current) / 1000);
+    return { answers: snapshot.answers, currentIdx: snapshot.currentIdx, elapsed: snapshot.elapsed, timeSpent: times };
+  }, []);
+
+  const cacheProgress = useCallback((progress: AttemptProgress) => {
+    if (!draftKey || restoredDraftKey.current !== draftKey) return;
+    try { localStorage.setItem(draftKey, JSON.stringify(progress)); }
+    catch { toast.error('Браузер не сохраняет черновик. Не закрывайте тест до сохранения на сервере.', { id: 'test-draft' }); }
+  }, [draftKey]);
+
+  // Save every edit locally; a quick reload must not depend on the 30-second API interval.
+  useEffect(() => {
+    if (ready) cacheProgress(snapshotProgress());
+  }, [ready, answers, currentIdx, elapsed, timeSpent, cacheProgress, snapshotProgress]);
+
+  useEffect(() => {
+    if (!ready) return;
+    const save = () => cacheProgress(snapshotProgress());
+    window.addEventListener('pagehide', save);
+    return () => { save(); window.removeEventListener('pagehide', save); };
+  }, [ready, cacheProgress, snapshotProgress]);
 
   // Keep one interval; answering a question must not restart the save countdown.
   useEffect(() => {
     if (!attemptId || !ready || submitting) return;
     const interval = setInterval(() => {
-      const snapshot = progressRef.current;
-      const times = { ...snapshot.timeSpent };
-      const questionId = snapshot.test?.questions?.[snapshot.currentIdx]?.id;
-      if (questionId) times[questionId] = (times[questionId] || 0) + Math.round((Date.now() - questionStartRef.current) / 1000);
-      api.put(`/tests/${attemptId}/progress`, {
-        answers: snapshot.answers, currentIdx: snapshot.currentIdx,
-        elapsed: snapshot.elapsed, timeSpent: times,
-      }).catch(() => toast.error('Не удалось сохранить прогресс. Проверьте соединение.', { id: 'test-autosave' }));
+      api.put(`/tests/${attemptId}/progress`, snapshotProgress()).catch(() => toast.error('Не удалось сохранить прогресс. Проверьте соединение.', { id: 'test-autosave' }));
     }, 30000);
     return () => clearInterval(interval);
-  }, [attemptId, ready, submitting]);
+  }, [attemptId, ready, submitting, snapshotProgress]);
 
   // Track time per question
   useEffect(() => {
@@ -112,7 +143,10 @@ export function TestPlayerPage() {
   const formatTime = (s: number) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
 
   const setAnswer = (questionId: string, value: any) => {
-    setAnswers(prev => ({ ...prev, [questionId]: value }));
+    const next = { ...progressRef.current.answers, [questionId]: value };
+    progressRef.current = { ...progressRef.current, answers: next };
+    cacheProgress(snapshotProgress());
+    setAnswers(next);
   };
 
   const goNext = () => { recordQuestionTime(); if (currentIdx < totalQuestions - 1) setCurrentIdx(i => i + 1); };
@@ -129,6 +163,9 @@ export function TestPlayerPage() {
         timeSpent: finalTimes[q.id] || 0,
       }));
       await api.post(`/tests/${attemptId}/submit`, { answers: answerPayload, totalTime: elapsed });
+      restoredDraftKey.current = null;
+      clearAttemptDraft(draftKey);
+      setReady(false);
       toast.success('Тест завершён!');
       navigate(`/test/${attemptId}/result`);
     } catch (err: any) {
@@ -141,6 +178,8 @@ export function TestPlayerPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-4">
+      <fieldset disabled={submitting} className="space-y-4 min-w-0">
+      <legend className="sr-only">Вопросы теста</legend>
       {/* Header */}
       <div className="glass-card p-4 flex items-center justify-between">
         <div>
@@ -258,24 +297,29 @@ export function TestPlayerPage() {
         </button>
       </div>
 
+      </fieldset>
+
       {/* Confirm dialog */}
-      {showConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => setShowConfirm(false)}>
-          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-strong p-6 rounded-2xl max-w-sm w-full" onClick={e => e.stopPropagation()}>
+      <Dialog.Root open={showConfirm} onOpenChange={open => { if (!submitting) setShowConfirm(open); }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
+          <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 glass-strong p-6 rounded-2xl max-w-sm w-[calc(100%-2rem)]"
+            onPointerDownOutside={event => { if (submitting) event.preventDefault(); }}
+            onEscapeKeyDown={event => { if (submitting) event.preventDefault(); }}>
             <AlertTriangle size={32} className="mx-auto mb-3" style={{ color: '#F59E0B' }} />
-            <h3 className="text-lg font-bold text-center mb-2" style={{ color: 'var(--text-primary)' }}>Завершить тест?</h3>
-            <p className="text-sm text-center mb-4" style={{ color: 'var(--text-secondary)' }}>
+            <Dialog.Title className="text-lg font-bold text-center mb-2" style={{ color: 'var(--text-primary)' }}>Завершить тест?</Dialog.Title>
+            <Dialog.Description className="text-sm text-center mb-4" style={{ color: 'var(--text-secondary)' }}>
               Отвечено: {answeredCount} из {totalQuestions}. Пропущенные будут засчитаны как неправильные.
-            </p>
+            </Dialog.Description>
             <div className="flex gap-3">
-              <button onClick={() => setShowConfirm(false)} className="flex-1 py-2.5 rounded-xl text-sm font-medium" style={{ background: 'var(--bg-input)', color: 'var(--text-secondary)' }}>Отмена</button>
+              <Dialog.Close disabled={submitting} className="flex-1 py-2.5 rounded-xl text-sm font-medium" style={{ background: 'var(--bg-input)', color: 'var(--text-secondary)' }}>Отмена</Dialog.Close>
               <button onClick={handleSubmit} disabled={submitting} className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white" style={{ background: 'var(--accent-gradient)' }}>
                 {submitting ? 'Отправка...' : 'Завершить'}
               </button>
             </div>
-          </motion.div>
-        </div>
-      )}
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   );
 }

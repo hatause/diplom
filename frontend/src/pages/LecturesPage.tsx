@@ -1,46 +1,51 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '@/api/client';
 import { motion } from 'framer-motion';
 import { BookOpen, FileText, Loader2, ArrowRight, Paperclip } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { errorText } from '@/api/companion';
+import { ErrorNotice } from '@/components/CompanionUI';
 import { useAuthStore } from '@/store/auth.store';
 
 export function LecturesPage() {
   const [lectures, setLectures] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
+  const [error, setError] = useState('');
+  const request = useRef<AbortController | null>(null);
   const { user } = useAuthStore();
   const groupId = user?.studentProfile?.group?.id;
 
-  useEffect(() => {
-    fetchLectures();
-  }, [groupId]);
-
-  const fetchLectures = async () => {
+  const fetchLectures = useCallback(async () => {
+    request.current?.abort();
+    const controller = new AbortController();
+    request.current = controller;
+    setLoading(true);
+    setError('');
     try {
-      // Fetch public lectures
-      const resPublic = await api.get('/lectures/public');
-      let allLectures = resPublic.data.data || [];
-      
-      // Fetch group lectures if student is in a group
-      if (groupId) {
-        const resGroup = await api.get(`/lectures/group/${groupId}`);
-        allLectures = [...allLectures, ...(resGroup.data.data || [])];
-      }
-      
-      // Remove duplicates by ID and sort by createdAt
-      const uniqueLectures = Array.from(new Map(allLectures.map((item: any) => [item.id, item])).values());
-      uniqueLectures.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      
+      const responses = await Promise.all([
+        api.get('/lectures/public', { signal: controller.signal }),
+        ...(groupId ? [api.get(`/lectures/group/${groupId}`, { signal: controller.signal })] : []),
+      ]);
+      if (controller.signal.aborted) return;
+      const allLectures = responses.flatMap(response => response.data.data || []);
+      const uniqueLectures = [...new Map(allLectures.map((item: any) => [item.id, item])).values()];
+      uniqueLectures.sort((a: any, b: any) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
       setLectures(uniqueLectures);
     } catch (e) {
-      console.error(e);
+      if (!controller.signal.aborted) setError(errorText(e));
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
-  };
+  }, [groupId]);
+
+  useEffect(() => {
+    void fetchLectures();
+    return () => request.current?.abort();
+  }, [fetchLectures]);
 
   if (loading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin text-accent" /></div>;
+
+  if (error) return <ErrorNotice message={error} retry={fetchLectures} />;
 
   return (
     <div className="space-y-6">
@@ -54,9 +59,9 @@ export function LecturesPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {lectures.map((lec, i) => (
           <motion.div key={lec.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-            <div 
-              onClick={() => navigate(`/lectures/${lec.id}`)} // Reusing the same lecture view page
-              className="glass-card p-6 cursor-pointer hover:border-accent transition-colors group"
+            <Link
+              to={`/lectures/${lec.id}`}
+              className="glass-card block p-6 cursor-pointer hover:border-accent transition-colors group"
             >
               <div className="flex items-start gap-4">
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-accent/10">
@@ -77,11 +82,11 @@ export function LecturesPage() {
                   <ArrowRight size={20} className="text-accent" />
                 </div>
               </div>
-            </div>
+            </Link>
           </motion.div>
         ))}
         {lectures.length === 0 && (
-          <div className="col-span-2 glass-panel p-10 text-center rounded-2xl">
+          <div className="md:col-span-2 glass-panel p-10 text-center rounded-2xl">
             <FileText size={48} className="mx-auto text-tertiary opacity-20 mb-4" />
             <p className="text-secondary font-medium">Для вас пока нет доступных лекций</p>
             <p className="text-sm text-tertiary mt-1">

@@ -112,7 +112,7 @@ export function TestGeneratePage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
         className="glass-card"
-        style={{ padding: '32px', borderRadius: 'var(--radius-xl)' }}
+        style={{ padding: 'clamp(18px, 4vw, 32px)', borderRadius: 'var(--radius-xl)' }}
       >
         <fieldset disabled={generating} className="min-w-0">
         <legend className="sr-only">Параметры теста</legend>
@@ -156,7 +156,7 @@ export function TestGeneratePage() {
         {/* Difficulty */}
         <div style={{ marginBottom: 24 }}>
           <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 10 }}>Сложность</label>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 120px), 1fr))', gap: 10 }}>
             {difficulties.map(d => {
               const active = form.difficulty === d.value;
               return (
@@ -213,7 +213,7 @@ export function TestGeneratePage() {
         {/* Question types */}
         <div style={{ marginBottom: 32 }}>
           <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 10 }}>Типы вопросов</label>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 210px), 1fr))', gap: 10 }}>
             {questionTypes.map(t => {
               const active = form.questionTypes.includes(t.value);
               return (
@@ -230,11 +230,11 @@ export function TestGeneratePage() {
                     cursor: 'pointer', transition: 'all 0.25s', textAlign: 'left',
                   }}
                 >
-                  <span style={{ fontSize: 18, opacity: 0.7, width: 24, textAlign: 'center' }}>{t.icon}</span>
+                  <span style={{ fontSize: 18, opacity: 0.7, width: 24, flexShrink: 0, textAlign: 'center' }}>{t.icon}</span>
                   <span style={{ fontSize: 13, fontWeight: active ? 600 : 500, color: active ? 'var(--text-accent)' : 'var(--text-secondary)' }}>
                     {t.label}
                   </span>
-                  {active && <CheckCircle2 size={16} style={{ marginLeft: 'auto', color: 'var(--accent-1)' }} />}
+                  {active && <CheckCircle2 size={16} style={{ marginLeft: 'auto', flexShrink: 0, color: 'var(--accent-1)' }} />}
                 </motion.button>
               );
             })}
@@ -249,7 +249,7 @@ export function TestGeneratePage() {
           disabled={generating || !form.subjectId || form.questionTypes.length === 0}
           className="btn-gradient"
           style={{
-            width: '100%', padding: '16px 24px', borderRadius: 18,
+            width: '100%', padding: '16px 18px', borderRadius: 18,
             fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
             opacity: (generating || !form.subjectId || form.questionTypes.length === 0) ? 0.6 : 1,
           }}

@@ -1,5 +1,23 @@
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List, Dict, Any
+from app.schemas.assessment import AssessmentBase, AssessmentText, Score
+
+
+class FeynmanScores(BaseModel):
+    conceptUnderstanding: Score
+    causalReasoning: Score
+    simpleExplanation: Score
+    exampleQuality: Score
+    exceptionAwareness: Score
+    logicalCoherence: Score
+
+
+class FeynmanAssessment(AssessmentBase):
+    understoodWell: List[AssessmentText]
+    knowledgeGaps: List[AssessmentText]
+    mistakesFound: List[AssessmentText]
+    topicsToReview: List[AssessmentText]
+    scores: FeynmanScores
 
 
 class FeynmanCreateRequest(BaseModel):

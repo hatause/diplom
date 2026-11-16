@@ -26,7 +26,7 @@ export function NotesPage() {
       .finally(() => setLoading(false));
   }, []);
   async function save() {
-    if (!draft || busy) return;
+    if (!draft || busy || loading) return;
     setBusy(true);
     setError("");
     try {
@@ -56,7 +56,7 @@ export function NotesPage() {
     }
   }
   async function remove() {
-    if (!selected || !window.confirm("Удалить эту заметку?")) return;
+    if (!selected || busy || !window.confirm("Удалить эту заметку?")) return;
     setBusy(true);
     try {
       await api.delete(`/companion/notes/${selected.id}`);
@@ -76,7 +76,7 @@ export function NotesPage() {
         description="Объяснения, идеи и маленькие открытия — в одном месте."
         action={
           <button
-            disabled={busy}
+            disabled={busy || loading}
             className="button primary"
             onClick={() => {
               setDraft({ id: "", title: "", content: "" });
@@ -100,6 +100,7 @@ export function NotesPage() {
           <label>
             Название
             <input
+              disabled={busy}
               value={draft.title}
               maxLength={200}
               required
@@ -109,6 +110,7 @@ export function NotesPage() {
           <label>
             Текст · поддерживает Markdown
             <textarea
+              disabled={busy}
               rows={14}
               maxLength={30000}
               required
@@ -117,14 +119,14 @@ export function NotesPage() {
             />
           </label>
           <div className="row">
-            <button className="button primary" disabled={busy}>
+            <button className="button primary" disabled={busy || loading}>
               <Save size={17} />
               Сохранить
             </button>
             <button
               type="button"
               className="button secondary"
-              disabled={busy}
+              disabled={busy || loading}
               onClick={() => setDraft(null)}
             >
               <X size={17} />
@@ -139,6 +141,7 @@ export function NotesPage() {
             <button
               className="icon-button"
               aria-label="Закрыть заметку"
+              disabled={busy}
               onClick={() => setSelected(null)}
             >
               <X size={19} />
@@ -150,6 +153,7 @@ export function NotesPage() {
           <div className="row wrap">
             <button
               className="button secondary"
+              disabled={busy}
               onClick={() => setDraft(selected)}
             >
               <Pencil size={16} />
@@ -166,7 +170,7 @@ export function NotesPage() {
             </button>
             <button
               className="button secondary"
-              disabled={busy}
+              disabled={busy || loading}
               onClick={remove}
             >
               <Trash2 size={16} />
@@ -183,7 +187,7 @@ export function NotesPage() {
             <button
               className="panel note-card"
               key={n.id}
-              disabled={busy}
+              disabled={busy || loading}
               onClick={() => {
                 setSelected(n);
                 setDraft(null);

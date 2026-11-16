@@ -13,6 +13,7 @@ from fastapi import HTTPException
 from app.db.database import prisma
 from app.services.gemini_service import gemini_service
 from app.services.prompts import DEBATE_SYSTEM_PROMPT, DEBATE_ASSESSMENT_PROMPT
+from app.schemas.debate import DebateAssessment
 
 logger = logging.getLogger(__name__)
 
@@ -157,11 +158,12 @@ Full debate:
 Evaluate the user's argumentation skills based on this debate."""
 
         assessment = await gemini_service.generate_json(
-            DEBATE_ASSESSMENT_PROMPT, assessment_prompt, max_output_tokens=4096
+            DEBATE_ASSESSMENT_PROMPT, assessment_prompt, max_output_tokens=4096,
+            response_model=DebateAssessment,
         )
 
         session["status"] = "completed"
-        session["assessment"] = assessment
+        session["assessment"] = assessment.model_dump()
 
         await self._update_session(user_id, session_id, session, expected)
 

@@ -14,6 +14,7 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -70,16 +71,29 @@ public class CppTcpClient {
         int position = pendingCount.incrementAndGet();
         log.info("Enqueued C++ request: payload={}, queuePosition={}", requestPayload, position);
 
-        Future<JsonNode> future = queue.submit(() -> {
+        AtomicBoolean queued = new AtomicBoolean(true);
+        FutureTask<JsonNode> future = new FutureTask<>(() -> {
+            if (!queued.compareAndSet(true, false)) throw new CancellationException();
             try {
                 return doSend(requestPayload);
             } finally {
+                // Keep active socket work counted even after its caller cancels.
                 pendingCount.decrementAndGet();
             }
-        });
+        }) {
+            @Override
+            protected void done() {
+                // Cancelled queued tasks never enter the callable's finally.
+                if (queued.compareAndSet(true, false)) pendingCount.decrementAndGet();
+            }
+        };
 
         try {
+            queue.execute(future);
             return future.get(TOTAL_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        } catch (RejectedExecutionException e) {
+            future.cancel(false);
+            throw new RuntimeException("Очередь C++ сервера остановлена", e);
         } catch (TimeoutException e) {
             future.cancel(true);
             throw new RuntimeException(
@@ -90,6 +104,7 @@ public class CppTcpClient {
             if (cause instanceof RuntimeException re) throw re;
             throw new RuntimeException("Ошибка при запросе к C++ серверу: " + cause.getMessage(), cause);
         } catch (InterruptedException e) {
+            future.cancel(true);
             Thread.currentThread().interrupt();
             throw new RuntimeException("Запрос к C++ серверу прерван", e);
         }
@@ -111,12 +126,18 @@ public class CppTcpClient {
         queue.shutdown();
         try {
             if (!queue.awaitTermination(10, TimeUnit.SECONDS)) {
-                queue.shutdownNow();
+                cancelQueuedRequests();
                 log.warn("C++ TCP queue did not terminate in time, forced shutdown");
             }
         } catch (InterruptedException e) {
-            queue.shutdownNow();
+            cancelQueuedRequests();
             Thread.currentThread().interrupt();
+        }
+    }
+
+    private void cancelQueuedRequests() {
+        for (Runnable task : queue.shutdownNow()) {
+            if (task instanceof Future<?> future) future.cancel(true);
         }
     }
 

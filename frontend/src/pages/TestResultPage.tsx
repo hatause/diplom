@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '@/api/client';
 import { errorText } from '@/api/companion';
@@ -14,24 +14,39 @@ export function TestResultPage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const request = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    if (!attemptId) return;
-    api.get(`/attempts/${attemptId}/result`).then(res => {
+    const controller = new AbortController();
+    request.current = controller;
+    setResult(null);
+    setAnalysis(null);
+    setAnalyzing(false);
+    setError('');
+    setLoading(true);
+    api.get(`/attempts/${attemptId}/result`, { signal: controller.signal }).then(res => {
+      if (controller.signal.aborted) return;
       setResult(res.data.data);
-      if (res.data.data.aiAnalysis) setAnalysis(res.data.data.aiAnalysis);
-      setLoading(false);
-    }).catch((err) => { setError(errorText(err)); setLoading(false); });
+      setAnalysis(res.data.data.aiAnalysis || null);
+    }).catch(err => {
+      if (!controller.signal.aborted) setError(errorText(err));
+    }).finally(() => {
+      if (!controller.signal.aborted) setLoading(false);
+    });
+    return () => controller.abort();
   }, [attemptId]);
 
   const handleAnalyze = async () => {
+    if (analyzing) return;
+    const signal = request.current?.signal;
     setAnalyzing(true);
     try {
-      const res = await api.post('/ai/analyze-result', { attemptId });
+      const res = await api.post('/ai/analyze-result', { attemptId }, { signal });
+      if (signal?.aborted) return;
       setAnalysis(res.data.data.analysis);
       toast.success('AI анализ готов!');
-    } catch (err) { toast.error(errorText(err)); }
-    finally { setAnalyzing(false); }
+    } catch (err) { if (!signal?.aborted) toast.error(errorText(err)); }
+    finally { if (!signal?.aborted) setAnalyzing(false); }
   };
 
   if (loading) return <div className="flex justify-center py-20"><div className="w-8 h-8 border-4 rounded-full animate-spin" style={{ borderColor: 'var(--border-subtle)', borderTopColor: 'var(--accent-1)' }} /></div>;

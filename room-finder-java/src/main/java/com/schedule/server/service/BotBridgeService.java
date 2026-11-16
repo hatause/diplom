@@ -77,6 +77,12 @@ public class BotBridgeService {
      * Основной метод: вычисляет ближайшее время начала пары и отправляет на C++.
      */
     public FindRoomResponse findRooms(FindRoomRequest request) {
+        if (request == null || request.getLocationId() == null || request.getLocationId().isBlank()) {
+            throw new IllegalArgumentException("Не указан корпус для поиска кабинета");
+        }
+        if (request.getDurationMinutes() < 15 || request.getDurationMinutes() > 240) {
+            throw new IllegalArgumentException("Длительность должна быть от 15 до 240 минут");
+        }
         log.info("findRooms: location_id={}, duration={}, floor={}, user={}",
                 request.getLocationId(), request.getDurationMinutes(),
                 request.getFloor(), request.getTelegramUserId());
@@ -164,10 +170,16 @@ public class BotBridgeService {
             JsonNode cppResponse = cppTcpClient.send(payload);
             log.info("C++ response: {}", cppResponse);
 
-            int cabinetNumber = cppResponse.has("cabinet") ? cppResponse.get("cabinet").asInt(0) : 0;
-            String status = cppResponse.has("status") ? cppResponse.get("status").asText("") : "";
+            JsonNode cabinet = cppResponse == null ? null : cppResponse.get("cabinet");
+            if (cppResponse == null || !cppResponse.isObject()
+                    || !"answer".equals(cppResponse.path("status").asText())
+                    || cabinet == null || !cabinet.isIntegralNumber() || !cabinet.canConvertToInt()
+                    || cabinet.intValue() < 0) {
+                throw new IllegalStateException("Некорректный ответ C++ сервера");
+            }
+            int cabinetNumber = cabinet.intValue();
 
-            if (cabinetNumber > 0 && "answer".equals(status)) {
+            if (cabinetNumber > 0) {
                 RoomInfo room = RoomInfo.builder()
                         .name(String.valueOf(cabinetNumber))
                         .locationName(corpus)
@@ -209,9 +221,9 @@ public class BotBridgeService {
      * Маппинг location_id бота → строка corpus.
      */
     private String resolveCorpus(String locationId) {
-        if (locationId == null) return "Главный";
-        String corpus = LOCATION_TO_CORPUS.get(locationId.toLowerCase());
-        return corpus != null ? corpus : locationId;
+        String normalized = locationId.trim();
+        String corpus = LOCATION_TO_CORPUS.get(normalized.toLowerCase(Locale.ROOT));
+        return corpus != null ? corpus : normalized;
     }
 
     // ========================= Отмена бронирования =========================

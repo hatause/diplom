@@ -10,7 +10,9 @@ export function MessagesPage() {
   const [contacts, setContacts] = useState<any[]>([]);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
-  const [inputText, setInputText] = useState('');
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const inputText = selectedUser ? drafts[selectedUser.id] || '' : '';
+  const setDraft = (id: string, value: string) => setDrafts(previous => ({ ...previous, [id]: value }));
   const [sending, setSending] = useState(false);
   const selectedId = useRef<string | null>(null);
   const searchId = useRef(0);
@@ -105,7 +107,7 @@ export function MessagesPage() {
     if (!inputText.trim() || !selectedUser || sending) return;
     setSending(true);
     const content = inputText;
-    setInputText('');
+    setDraft(selectedUser.id, '');
     
     try {
       const res = await api.post('/messages', {
@@ -116,7 +118,7 @@ export function MessagesPage() {
       scrollToBottom();
     } catch (e) {
       toast.error(errorText(e));
-      if (selectedId.current === selectedUser.id) setInputText(content); // restore on fail
+      setDrafts(previous => ({ ...previous, [selectedUser.id]: previous[selectedUser.id] || content }));
     } finally { setSending(false); }
   };
 
@@ -138,7 +140,8 @@ export function MessagesPage() {
           <div className="relative">
             <input 
               type="text" 
-              placeholder="Поиск пользователей..." 
+              placeholder="Поиск пользователей..."
+              aria-label="Поиск пользователей"
               value={searchQuery}
               onChange={e => handleSearch(e.target.value)}
               className="w-full input-glass rounded-xl px-4 py-2.5 text-sm pl-10 outline-none"
@@ -156,10 +159,11 @@ export function MessagesPage() {
             <div className="p-6 text-center text-tertiary text-sm">У вас пока нет переписок. Найдите кого-нибудь через поиск!</div>
           ) : (
             displayList.map(c => (
-              <div 
+              <button
+                type="button"
                 key={c.id} 
                 onClick={() => selectContact(c)}
-                className={`p-4 flex items-center gap-3 cursor-pointer transition-colors border-l-4 ${selectedUser?.id === c.id ? 'bg-white/10 border-accent' : 'border-transparent hover:bg-white/5'}`}
+                className={`w-full text-left p-4 flex items-center gap-3 cursor-pointer transition-colors border-l-4 ${selectedUser?.id === c.id ? 'bg-white/10 border-accent' : 'border-transparent hover:bg-white/5'}`}
               >
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent/20 to-purple-500/20 flex items-center justify-center text-accent font-bold">
                   {c.firstName?.[0]}
@@ -168,7 +172,7 @@ export function MessagesPage() {
                   <div className="font-medium text-primary truncate">{c.firstName} {c.lastName}</div>
                   {isSearching && <div className="text-xs text-tertiary truncate">{c.role === 'TEACHER' ? 'Преподаватель' : c.role === 'STUDENT' ? 'Студент' : c.role}</div>}
                 </div>
-              </div>
+              </button>
             ))
           )}
         </div>
@@ -213,12 +217,16 @@ export function MessagesPage() {
                 <input 
                   type="text" 
                   value={inputText}
-                  onChange={e => setInputText(e.target.value)}
+                  onChange={e => setDraft(selectedUser.id, e.target.value)}
+                  disabled={sending}
+                  aria-label="Сообщение"
+                  maxLength={10000}
                   placeholder="Введите сообщение..." 
                   className="input-glass flex-1 rounded-xl px-4"
                 />
                 <button 
-                  type="submit" 
+                  type="submit"
+                  aria-label="Отправить сообщение"
                   disabled={!inputText.trim() || sending}
                   className="bg-accent text-white w-12 h-12 rounded-xl flex items-center justify-center disabled:opacity-50 hover:opacity-90 transition-opacity"
                 >

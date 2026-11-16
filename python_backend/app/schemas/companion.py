@@ -1,6 +1,6 @@
 import base64
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
 
 Language = Literal['ru', 'en', 'de', 'uk']
@@ -50,11 +50,13 @@ class ChatRequest(LearningContext):
 
 
 class GenerateMaterial(LearningContext):
+    model_config = ConfigDict(str_strip_whitespace=True)
     source: str = Field(min_length=1, max_length=20000)
     count: int = Field(default=5, ge=3, le=15)
 
 
 class Card(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
     question: str = Field(min_length=1, max_length=2000)
     answer: str = Field(min_length=1, max_length=4000)
 
@@ -66,13 +68,15 @@ class DeckOutput(BaseModel):
 
 class QuizQuestion(Card):
     type: Literal['multiple_choice', 'true_false', 'short_answer']
-    options: list[str] = Field(max_length=6, description='For multiple_choice: 2–6 unique options. For true_false: exactly two localized options. For short_answer: an empty array.')
-    answer: str = Field(min_length=1, max_length=4000, description='For choice questions copy one option verbatim, never its letter or index. For short_answer use a single term or number.')
+    options: list[Annotated[str, Field(min_length=1, max_length=2000)]] = Field(max_length=6, description='For multiple_choice: 2–6 unique options. For true_false: exactly two localized options. For short_answer: an empty array.')
+    answer: str = Field(min_length=1, max_length=2000, description='For choice questions copy one option verbatim, never its letter or index. For short_answer use a single term or number.')
     explanation: str = Field(min_length=1, max_length=4000)
     topic: str = Field(min_length=1, max_length=200)
 
     @model_validator(mode='after')
     def valid_options(self):
+        if self.type == 'short_answer' and self.options:
+            raise ValueError('Short answers must not contain options')
         if self.type != 'short_answer':
             if len(self.options) < 2 or len(set(self.options)) != len(self.options) or self.answer not in self.options:
                 raise ValueError('Answer must exactly match a unique option')
@@ -97,11 +101,13 @@ class CardReview(BaseModel):
 
 
 class NoteInput(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
     title: str = Field(min_length=1, max_length=200)
     content: str = Field(min_length=1, max_length=30000)
 
 
 class TaskInput(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
     title: str = Field(min_length=1, max_length=200)
     subject: str = Field(default='', max_length=120)
     kind: Literal['homework', 'test']

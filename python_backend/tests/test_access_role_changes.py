@@ -2,6 +2,7 @@
 import os
 import unittest
 import uuid
+from unittest.mock import AsyncMock, patch
 
 import httpx
 
@@ -9,6 +10,7 @@ from app.core.config import UPLOAD_DIR
 from app.db.database import prisma
 from app.main import app
 from app.services.auth import create_access_token
+from app.services.companion import companion_service
 
 
 @unittest.skipUnless(os.getenv('RUN_DB_TESTS') == '1', 'Set RUN_DB_TESTS=1')
@@ -74,3 +76,26 @@ class RoleChangeAccessTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_former_lecture_author_does_not_keep_staff_access(self):
         await self.check_demotion(self.teacher)
+
+    async def test_ai_context_respects_the_current_role_after_demotion(self):
+        secret = 'Private teacher lecture that a demoted student cannot access'
+        await prisma.lecture.create(data={
+            'title': 'Private AI context', 'content': secret,
+            'subjectId': self.subject.id, 'groupId': self.group.id,
+            'teacherId': self.teacher.id,
+        })
+        await prisma.user.update(where={'id': self.teacher.id}, data={'role': 'STUDENT'})
+        with patch.object(companion_service, 'chat', new=AsyncMock(return_value={
+            'id': 'conversation', 'messages': [{'content': 'Response'}],
+        })) as chat:
+            denied = await self.client.post('/api/v1/ai/chat', headers=self.headers(self.teacher), json={
+                'message': 'Explain this subject', 'subjectId': self.subject.id,
+            })
+            self.assertEqual(denied.status_code, 200, denied.text)
+            self.assertNotIn(secret, chat.call_args.kwargs['extra_context'])
+            await prisma.studentprofile.create(data={'userId': self.teacher.id, 'groupId': self.group.id})
+            allowed = await self.client.post('/api/v1/ai/chat', headers=self.headers(self.teacher), json={
+                'message': 'Explain this subject', 'subjectId': self.subject.id,
+            })
+            self.assertEqual(allowed.status_code, 200, allowed.text)
+            self.assertIn(secret, chat.call_args.kwargs['extra_context'])

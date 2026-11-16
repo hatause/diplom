@@ -1,5 +1,27 @@
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List, Dict, Any
+from app.schemas.assessment import AssessmentBase, AssessmentText, Score
+
+
+class DebateScores(BaseModel):
+    argumentQuality: Score
+    logicalReasoning: Score
+    evidenceUse: Score
+    counterargumentHandling: Score
+    topicUnderstanding: Score
+    questioningSkill: Score
+
+
+class DebateAssessment(AssessmentBase):
+    strongPoints: List[AssessmentText]
+    weakPoints: List[AssessmentText]
+    goodArguments: List[AssessmentText]
+    unsupportedClaims: List[AssessmentText]
+    logicalFallacies: List[AssessmentText]
+    unrefutedCounterarguments: List[AssessmentText]
+    lessonsLearned: List[AssessmentText]
+    topicsToStudy: List[AssessmentText]
+    scores: DebateScores
 
 
 class DebateCreateRequest(BaseModel):

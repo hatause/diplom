@@ -4,11 +4,13 @@ import { errorText } from '@/api/companion';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { Shield, Users, BookOpen, BarChart3, FileText, GraduationCap, Plus, Calendar } from 'lucide-react';
+import { ErrorNotice } from '@/components/CompanionUI';
 import { ScheduleManager } from '@/components/ScheduleManager';
 
 export function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   // Stats
   const [stats, setStats] = useState<any>(null);
@@ -24,6 +26,7 @@ export function AdminDashboardPage() {
 
   const fetchData = async () => {
     setLoading(true);
+    setError('');
     try {
       const [dashRes, usersRes, groupsRes, subjRes] = await Promise.all([
         api.get('/admin/dashboard'),
@@ -41,12 +44,14 @@ export function AdminDashboardPage() {
       setGroupsList(groupsRes.data.data || []);
       setSubjectsList(subjRes.data.data || []);
     } catch (e) {
-      toast.error(errorText(e));
+      setError(errorText(e));
     }
     setLoading(false);
   };
 
   if (loading) return <div className="space-y-4">{[...Array(4)].map((_, i) => <div key={i} className="skeleton h-32 rounded-2xl" />)}</div>;
+
+  if (error) return <ErrorNotice message={error} retry={fetchData} />;
 
   const tabs = [
     { id: 'dashboard', label: 'Обзор', icon: BarChart3 },
@@ -155,22 +160,28 @@ function DashboardTab({ stats, users }: { stats: any; users: any[] }) {
 function UsersTab({ users, groups, onRefresh }: { users: any[], groups: any[], onRefresh: () => void }) {
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '', password: '', role: 'STUDENT', groupId: '' });
   
+  const [saving, setSaving] = useState(false);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving) return;
+    setSaving(true);
     try {
       await api.post('/admin/users', form);
       setForm({ firstName: '', lastName: '', email: '', password: '', role: 'STUDENT', groupId: '' });
       onRefresh();
     } catch (e) {
       toast.error(errorText(e));
-    }
+    } finally { setSaving(false); }
   };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div className="md:col-span-1 glass-card p-6 h-fit">
         <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Plus size={18}/> Новый пользователь</h3>
-        <form onSubmit={submit} className="space-y-4">
+        <form onSubmit={submit}>
+          <fieldset disabled={saving} className="space-y-4 min-w-0">
+          <legend className="sr-only">Новый пользователь</legend>
           <input className="input-field w-full" placeholder="Имя" required value={form.firstName} onChange={e => setForm({...form, firstName: e.target.value})} />
           <input className="input-field w-full" placeholder="Фамилия" required value={form.lastName} onChange={e => setForm({...form, lastName: e.target.value})} />
           <input className="input-field w-full" type="email" placeholder="Email" required value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
@@ -187,6 +198,7 @@ function UsersTab({ users, groups, onRefresh }: { users: any[], groups: any[], o
             </select>
           )}
           <button className="btn-primary w-full">Создать</button>
+          </fieldset>
         </form>
       </div>
       <div className="md:col-span-2 glass-card p-6">
@@ -221,25 +233,32 @@ function UsersTab({ users, groups, onRefresh }: { users: any[], groups: any[], o
 function GroupsTab({ groups, users, onRefresh }: { groups: any[], users: any[], onRefresh: () => void }) {
   const [form, setForm] = useState({ name: '', code: '' });
   const [assignForm, setAssignForm] = useState({ groupId: '', teacherId: '' });
+  const [creating, setCreating] = useState(false);
+  const [assigning, setAssigning] = useState(false);
   const teachers = users.filter(u => u.role === 'TEACHER' && u.isActive);
 
   const createGroup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (creating) return;
+    setCreating(true);
     try {
     await api.post('/admin/groups', form);
     setForm({ name: '', code: '' });
     onRefresh();
     } catch (err) { toast.error(errorText(err)); }
+    finally { setCreating(false); }
   };
 
   const assignTeacher = async (e: React.FormEvent) => {
     e.preventDefault();
-    if(!assignForm.groupId || !assignForm.teacherId) return;
+    if (assigning || !assignForm.groupId || !assignForm.teacherId) return;
+    setAssigning(true);
     try {
     await api.post(`/admin/groups/${assignForm.groupId}/teachers`, { teacherId: assignForm.teacherId });
     setAssignForm({ groupId: '', teacherId: '' });
     onRefresh();
     } catch (err) { toast.error(errorText(err)); }
+    finally { setAssigning(false); }
   };
 
   return (
@@ -247,16 +266,21 @@ function GroupsTab({ groups, users, onRefresh }: { groups: any[], users: any[], 
       <div className="space-y-6">
         <div className="glass-card p-6">
           <h3 className="text-lg font-bold mb-4">Новая группа</h3>
-          <form onSubmit={createGroup} className="space-y-4">
+          <form onSubmit={createGroup}>
+            <fieldset disabled={creating} className="space-y-4 min-w-0">
+            <legend className="sr-only">Новая группа</legend>
             <input className="input-field w-full" placeholder="Название (ПИ-20)" required value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
             <input className="input-field w-full" placeholder="Код (PI-20)" required value={form.code} onChange={e => setForm({...form, code: e.target.value})} />
             <button className="btn-primary w-full">Создать</button>
+            </fieldset>
           </form>
         </div>
 
         <div className="glass-card p-6">
           <h3 className="text-lg font-bold mb-4">Назначить преподавателя</h3>
-          <form onSubmit={assignTeacher} className="space-y-4">
+          <form onSubmit={assignTeacher}>
+            <fieldset disabled={assigning} className="space-y-4 min-w-0">
+            <legend className="sr-only">Назначение преподавателя</legend>
             <select className="input-field w-full" required value={assignForm.groupId} onChange={e => setAssignForm({...assignForm, groupId: e.target.value})}>
               <option value="">Выберите группу...</option>
               {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
@@ -266,6 +290,7 @@ function GroupsTab({ groups, users, onRefresh }: { groups: any[], users: any[], 
               {teachers.map(t => <option key={t.id} value={t.id}>{t.firstName} {t.lastName}</option>)}
             </select>
             <button className="btn-primary w-full">Назначить</button>
+            </fieldset>
           </form>
         </div>
       </div>
@@ -317,7 +342,9 @@ function SubjectsTab({ subjects, users, onRefresh }: { subjects: any[], users: a
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div className="md:col-span-1 glass-card p-6 h-fit">
         <h3 className="text-lg font-bold mb-4">Новый предмет</h3>
-        <form onSubmit={submit} className="space-y-4">
+        <form onSubmit={submit}>
+          <fieldset disabled={saving} className="space-y-4 min-w-0">
+          <legend className="sr-only">Новый предмет</legend>
           {error && <p role="alert" style={{ color: 'var(--error)' }}>{error}</p>}
           <input className="input-field w-full" placeholder="Название" required value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
           <input className="input-field w-full" placeholder="Код (CS-101)" required value={form.code} onChange={e => setForm({...form, code: e.target.value})} />
@@ -327,6 +354,7 @@ function SubjectsTab({ subjects, users, onRefresh }: { subjects: any[], users: a
             {teachers.map(t => <option key={t.id} value={t.id}>{t.firstName} {t.lastName}</option>)}
           </select>
           <button type="submit" className="btn-primary w-full" disabled={saving}>{saving ? 'Создание…' : 'Создать'}</button>
+          </fieldset>
         </form>
       </div>
       <div className="md:col-span-2 glass-card p-6">

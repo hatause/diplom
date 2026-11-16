@@ -24,7 +24,7 @@ export function PlannerPage() {
       .finally(() => setLoading(false));
   }, []);
   async function save() {
-    if (busy) return;
+    if (busy || loading) return;
     setBusy(true);
     setError("");
     try {
@@ -44,6 +44,7 @@ export function PlannerPage() {
     }
   }
   async function toggle(task: Task) {
+    if (busy) return;
     setBusy(true);
     setError("");
     try {
@@ -72,6 +73,8 @@ export function PlannerPage() {
           save();
         }}
       >
+        <fieldset disabled={busy} className="page-stack min-w-0">
+        <legend className="sr-only">Новое задание</legend>
         <div className="two-columns">
           <label>
             Что нужно сделать?
@@ -117,12 +120,13 @@ export function PlannerPage() {
         <div>
           <button
             className="button primary"
-            disabled={busy || !title.trim() || !due}
+            disabled={busy || loading || !title.trim() || !due}
           >
             <Plus size={17} />
             Добавить в план
           </button>
         </div>
+        </fieldset>
       </form>
       <section className="panel">
         <h2>Твой план</h2>

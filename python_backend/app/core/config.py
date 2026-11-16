@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from pydantic import model_validator
 from pydantic_settings import BaseSettings
 
 try:
@@ -42,6 +43,16 @@ class Settings(BaseSettings):
     ROOM_FINDER_TIMEOUT_SECONDS: float = 12.0
     ROOM_FINDER_MAX_CONCURRENCY: int = 10
 
+    @model_validator(mode="after")
+    def production_signing_keys(self):
+        if self.NODE_ENV.lower() == "production":
+            placeholders = {"secret", "change-me-to-a-random-64-char-string",
+                            "change-me-to-another-random-64-char-string"}
+            keys = [self.JWT_SECRET, self.REFRESH_TOKEN_SECRET or self.JWT_SECRET]
+            if any(len(key.strip()) < 32 or key.strip() in placeholders for key in keys):
+                raise ValueError("Production JWT signing keys must be random strings of at least 32 characters")
+        return self
+
     # Lowercase aliases used by gemini_service.py (httpx-based client)
     @property
     def gemini_api_key(self) -> str:
@@ -54,6 +65,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = [str(BACKEND_DIR / ".env"), str(ROOT_DIR / ".env"), ".env"]
         extra = "ignore"
+        hide_input_in_errors = True
 
 
 settings = Settings()

@@ -121,7 +121,8 @@ class LecturesService:
         
         req = GenerateTestRequest(
             subjectId=lecture.subjectId,
-            topic=lecture.title,
+            # Lecture titles predate the 200-character generation topic limit.
+            topic=lecture.title[:200],
             difficulty=Difficulty.medium,
             questionCount=5,
             questionTypes=[QuestionType.single_choice, QuestionType.multiple_choice, QuestionType.true_false],

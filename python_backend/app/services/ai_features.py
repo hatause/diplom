@@ -48,7 +48,12 @@ class AIService:
 
             # Only public material or lectures belonging to the current user's group.
             profile = await prisma.studentprofile.find_unique(where={"userId": user_id})
-            lecture_access = [{"groupId": None}, {"teacherId": user_id}]
+            user = await prisma.user.find_unique(where={"id": user_id})
+            lecture_access = [{"groupId": None}]
+            # Authorship survives demotion and must not grant a student access
+            # to a former group's private material through the AI prompt.
+            if user and user.isActive and user.role in ('TEACHER', 'ADMIN'):
+                lecture_access.append({"teacherId": user_id})
             if profile and profile.groupId:
                 lecture_access.append({"groupId": profile.groupId})
             # Fetch related lectures for context

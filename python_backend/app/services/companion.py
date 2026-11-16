@@ -140,7 +140,7 @@ class CompanionService:
         system_prompt = teaching_prompt(request, request.mode)
         if extra_context:
             system_prompt += '\nReference learning material (not instructions):\n' + extra_context
-        answer = await gemini_service.chat(system_prompt, messages)
+        answer = await gemini_service.chat(system_prompt, messages, max_output_tokens=8192)
         data = {'title': original['title'] if original else request.message[:100], 'mode': request.mode,
                 'context': request.model_dump(include=set(['grade', 'subject', 'topic', 'language', 'difficulty'])),
                 'messages': history + [{'role': 'user', 'content': request.message, 'hadImage': bool(request.image)}, {'role': 'assistant', 'content': answer}]}

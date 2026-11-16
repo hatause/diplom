@@ -1,11 +1,13 @@
 """Read local lecture attachments without fetching arbitrary URLs."""
 import asyncio
 import base64
+from lzma import LZMAError
 from pathlib import Path
 import re
 from urllib.parse import unquote, urlsplit
 from zipfile import ZipFile, BadZipFile
 from xml.etree import ElementTree as ET
+from zlib import error as ZlibError
 
 from fastapi import HTTPException
 from app.core.config import UPLOAD_DIR
@@ -16,15 +18,23 @@ MAX_XML_BYTES = 20 * 1024 * 1024
 
 
 def attachment_path(url: str) -> Path:
-    parsed = urlsplit(url)
+    try:
+        parsed = urlsplit(url)
+    except ValueError:
+        raise HTTPException(400, 'Некорректный путь вложения.') from None
     path = unquote(parsed.path)
     prefix = '/api/v1/uploads/'
     if parsed.scheme or parsed.netloc or not path.startswith(prefix):
         raise HTTPException(400, 'Вложение должно быть загружено на этот сайт.')
     name = path[len(prefix):]
+    if not name or '/' in name or '\\' in name or '\x00' in name:
+        raise HTTPException(400, 'Некорректный путь вложения.')
     root = UPLOAD_DIR.resolve()
-    target = (root / name).resolve()
-    if not name or '/' in name or '\\' in name or target.parent != root:
+    try:
+        target = (root / name).resolve()
+    except (OSError, ValueError):
+        raise HTTPException(400, 'Некорректный путь вложения.') from None
+    if target.parent != root:
         raise HTTPException(400, 'Некорректный путь вложения.')
     if not target.is_file():
         raise HTTPException(404, 'Файл лекции не найден. Загрузите его повторно.')
@@ -76,7 +86,7 @@ def _read_attachment(url: str) -> list[dict]:
                     if text.strip():
                         chunks.append((f'Слайд {index + 1}\n' if name.startswith('ppt/') else '') + text)
                 text = '\n\n'.join(chunks)
-        except (BadZipFile, ET.ParseError, KeyError, RuntimeError, OSError):
+        except (BadZipFile, ET.ParseError, KeyError, RuntimeError, OSError, ZlibError, LZMAError, EOFError):
             raise HTTPException(422, 'Не удалось прочитать документ. Загрузите исправный DOCX, PPTX или PDF.') from None
     elif path.suffix.lower() in ('.txt', '.md', '.csv'):
         try:

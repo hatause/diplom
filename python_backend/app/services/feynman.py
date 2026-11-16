@@ -13,6 +13,7 @@ from fastapi import HTTPException
 from app.db.database import prisma
 from app.services.gemini_service import gemini_service
 from app.services.prompts import FEYNMAN_SYSTEM_PROMPT, FEYNMAN_ASSESSMENT_PROMPT
+from app.schemas.feynman import FeynmanAssessment
 
 logger = logging.getLogger(__name__)
 
@@ -150,11 +151,12 @@ Full conversation:
 Evaluate the user's understanding based on their explanations."""
 
         assessment = await gemini_service.generate_json(
-            FEYNMAN_ASSESSMENT_PROMPT, assessment_prompt, max_output_tokens=4096
+            FEYNMAN_ASSESSMENT_PROMPT, assessment_prompt, max_output_tokens=4096,
+            response_model=FeynmanAssessment,
         )
 
         session["status"] = "completed"
-        session["assessment"] = assessment
+        session["assessment"] = assessment.model_dump()
 
         await self._update_session(user_id, session_id, session, expected)
 

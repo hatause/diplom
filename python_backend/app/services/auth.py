@@ -175,21 +175,22 @@ class AuthService:
         return safe_user
 
     async def change_password(self, user_id: str, current_password: str, new_password: str):
-        user = await prisma.user.find_unique(where={"id": user_id})
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+        async with prisma.tx() as db:
+            # The password check, replacement and session revocation form one
+            # operation. Concurrent changes must check the latest password.
+            await db.query_raw('SELECT id FROM "User" WHERE id = $1 FOR NO KEY UPDATE', user_id)
+            user = await db.user.find_unique(where={"id": user_id})
+            if not user:
+                raise HTTPException(status_code=404, detail="User not found")
 
-        if not verify_password(current_password, user.passwordHash):
-            raise HTTPException(status_code=400, detail="Current password is incorrect")
+            if not verify_password(current_password, user.passwordHash):
+                raise HTTPException(status_code=400, detail="Current password is incorrect")
 
-        new_hash = hash_password(new_password)
-        await prisma.user.update(
-            where={"id": user_id},
-            data={"passwordHash": new_hash}
-        )
-
-        # Invalidate all refresh tokens
-        await prisma.refreshtoken.delete_many(where={"userId": user_id})
+            await db.user.update(
+                where={"id": user_id},
+                data={"passwordHash": hash_password(new_password)}
+            )
+            await db.refreshtoken.delete_many(where={"userId": user_id})
 
 auth_service = AuthService()
 

@@ -179,6 +179,8 @@ function LecturesTab({ groups, subjects }: { groups: any[], subjects: any[] }) {
       <div className="glass-card p-6 h-fit">
         <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Plus size={18}/> Добавить лекцию</h3>
         <form onSubmit={submit} className="space-y-4">
+          <fieldset disabled={uploading} className="space-y-4 min-w-0">
+          <legend className="sr-only">Новая лекция</legend>
           <input className="input-field w-full" placeholder="Название лекции" required value={form.title} onChange={e => setForm({...form, title: e.target.value})} />
           <select className="input-field w-full" value={form.groupId} onChange={e => setForm({...form, groupId: e.target.value})}>
             <option value="">Общий доступ (Public)</option>
@@ -202,12 +204,13 @@ function LecturesTab({ groups, subjects }: { groups: any[], subjects: any[] }) {
           <button disabled={uploading} className="btn-primary w-full flex justify-center gap-2">
             {uploading ? 'Загрузка...' : 'Сохранить лекцию'}
           </button>
+          </fieldset>
         </form>
       </div>
 
       <div className="glass-card p-6">
         <h3 className="text-lg font-bold mb-4">Материалы групп</h3>
-        <select className="input-field w-full mb-4" value={selectedGroup} onChange={e => setSelectedGroup(e.target.value)}>
+        <select className="input-field w-full mb-4" disabled={uploading} value={selectedGroup} onChange={e => setSelectedGroup(e.target.value)}>
           <option value="public">Общие (Public)</option>
           {groups.map(g => <option key={g.id} value={g.id}>Группа: {g.name}</option>)}
         </select>
@@ -235,15 +238,19 @@ function LecturesTab({ groups, subjects }: { groups: any[], subjects: any[] }) {
 function SubjectsTab({ subjects, onRefresh }: { subjects: any[], onRefresh: () => void }) {
   const [form, setForm] = useState({ name: '', code: '', description: '' });
 
+  const [saving, setSaving] = useState(false);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving) return;
+    setSaving(true);
     try {
       await api.post('/teacher/subjects', form);
       setForm({ name: '', code: '', description: '' });
       onRefresh();
     } catch (e) {
       toast.error(errorText(e));
-    }
+    } finally { setSaving(false); }
   };
 
   return (
@@ -251,11 +258,14 @@ function SubjectsTab({ subjects, onRefresh }: { subjects: any[], onRefresh: () =
       <div className="md:col-span-1 glass-card p-6 h-fit">
         <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Plus size={18}/> Добавить свой предмет</h3>
         <p className="text-xs text-[var(--text-secondary)] mb-4">Например: "Разработка ПО", "Настройки биоса" и т.д.</p>
-        <form onSubmit={submit} className="space-y-4">
+        <form onSubmit={submit}>
+          <fieldset disabled={saving} className="space-y-4 min-w-0">
+          <legend className="sr-only">Новый предмет</legend>
           <input className="input-field w-full" placeholder="Название (напр. Настройки биоса)" required value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
           <input className="input-field w-full" placeholder="Код (напр. BIOS-101)" required value={form.code} onChange={e => setForm({...form, code: e.target.value})} />
           <textarea className="input-field w-full" placeholder="Описание..." value={form.description} onChange={e => setForm({...form, description: e.target.value})} />
           <button className="btn-primary w-full">Создать</button>
+          </fieldset>
         </form>
       </div>
       

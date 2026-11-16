@@ -10,6 +10,7 @@ export default function GroupsPage() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [newGroup, setNewGroup] = useState({ name: '', code: '' });
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const selectedGroupId = useRef<string | null>(null);
@@ -49,15 +50,17 @@ export default function GroupsPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (creating) return;
+    setCreating(true);
     try {
       const created = await groupsApi.createGroup(newGroup);
-      setGroups([created, ...groups]);
+      setGroups(previous => [created, ...previous]);
       setShowCreate(false);
       setNewGroup({ name: '', code: '' });
       toast.success('Группа создана!');
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Ошибка создания группы');
-    }
+      toast.error(errorText(err));
+    } finally { setCreating(false); }
   };
 
   const handleSelectGroup = async (group: Group) => {
@@ -125,7 +128,7 @@ export default function GroupsPage() {
           <h1 className="text-3xl font-bold font-heading text-primary">Мои группы</h1>
           <p className="text-tertiary">Управляйте своими студентами и группами</p>
         </div>
-        <button onClick={() => setShowCreate(!showCreate)} className="btn-gradient flex items-center gap-2 px-4 py-2 rounded-xl text-sm">
+        <button disabled={creating} onClick={() => setShowCreate(!showCreate)} className="btn-gradient flex items-center gap-2 px-4 py-2 rounded-xl text-sm">
           <Plus size={16} /> Создать группу
         </button>
       </div>
@@ -134,13 +137,13 @@ export default function GroupsPage() {
         <motion.form initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} onSubmit={handleCreate} className="glass-panel p-6 rounded-2xl flex gap-4 items-end">
           <div className="flex-1">
             <label className="block text-sm text-tertiary mb-1">Название группы</label>
-            <input type="text" className="input-glass w-full" placeholder="Например: ПИ-22-1" required value={newGroup.name} onChange={e => setNewGroup({ ...newGroup, name: e.target.value })} />
+            <input type="text" className="input-glass w-full" placeholder="Например: ПИ-22-1" disabled={creating} required value={newGroup.name} onChange={e => setNewGroup({ ...newGroup, name: e.target.value })} />
           </div>
           <div className="flex-1">
             <label className="block text-sm text-tertiary mb-1">Код приглашения</label>
-            <input type="text" className="input-glass w-full" placeholder="pi-22-1-secret" required value={newGroup.code} onChange={e => setNewGroup({ ...newGroup, code: e.target.value })} />
+            <input type="text" className="input-glass w-full" placeholder="pi-22-1-secret" disabled={creating} required value={newGroup.code} onChange={e => setNewGroup({ ...newGroup, code: e.target.value })} />
           </div>
-          <button type="submit" className="btn-gradient px-6 py-3 rounded-xl whitespace-nowrap">
+          <button type="submit" disabled={creating} className="btn-gradient px-6 py-3 rounded-xl whitespace-nowrap">
             Создать
           </button>
         </motion.form>

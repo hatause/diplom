@@ -34,20 +34,25 @@ export function DebatePage() {
   const [subjects, setSubjects] = useState<any[]>([]);
   const [selectedSubject, setSelectedSubject] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const request = useRef<AbortController | null>(null);
 
   useEffect(() => {
     api.get('/subjects').then(res => setSubjects(res.data.data || [])).catch(e => toast.error(errorText(e)));
   }, []);
 
   useEffect(() => {
-    if (!sessionId) { setSession(null); return; }
-    let cancelled = false;
-    setLoading(true);
-    api.get(`/debate/sessions/${sessionId}`)
-      .then(res => { if (!cancelled) setSession(res.data.data); })
-      .catch(e => { if (!cancelled) toast.error(errorText(e)); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+    const controller = new AbortController();
+    request.current = controller;
+    setSession(null);
+    setInput('');
+    setLoading(Boolean(sessionId));
+    if (sessionId) {
+      api.get(`/debate/sessions/${sessionId}`, { signal: controller.signal })
+        .then(res => { if (!controller.signal.aborted) setSession(res.data.data); })
+        .catch(e => { if (!controller.signal.aborted) toast.error(errorText(e)); })
+        .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    }
+    return () => controller.abort();
   }, [sessionId]);
 
   useEffect(() => {
@@ -60,19 +65,22 @@ export function DebatePage() {
       toast.error('Введите тему и вашу позицию');
       return;
     }
+    const signal = request.current?.signal;
     setLoading(true);
     try {
       const res = await api.post('/debate/sessions', {
         topic: topic.trim(),
         position: position.trim(),
         subjectId: selectedSubject || undefined,
-      });
+      }, { signal });
+      if (signal?.aborted) return;
       setSession(res.data.data);
       setParams({ session: res.data.data.id });
     } catch (e) {
+      if (signal?.aborted) return;
       toast.error(errorText(e));
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   };
 
@@ -80,6 +88,7 @@ export function DebatePage() {
     if (!input.trim() || !session || loading) return;
     const userMsg = input.trim();
     setInput('');
+    const signal = request.current?.signal;
     setLoading(true);
 
     // Optimistic update
@@ -91,28 +100,33 @@ export function DebatePage() {
     try {
       const res = await api.post(`/debate/sessions/${session.id}/argue`, {
         argument: userMsg,
-      });
+      }, { signal });
+      if (signal?.aborted) return;
       setSession(res.data.data);
     } catch (e) {
+      if (signal?.aborted) return;
       toast.error(errorText(e));
       setSession(session);
       setInput(userMsg);
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   };
 
   const completeSession = async () => {
     if (!session || loading) return;
+    const signal = request.current?.signal;
     setLoading(true);
     try {
-      const res = await api.post(`/debate/sessions/${session.id}/complete`);
+      const res = await api.post(`/debate/sessions/${session.id}/complete`, undefined, { signal });
+      if (signal?.aborted) return;
       setSession(res.data.data);
       toast.success('Дебаты завершены!');
     } catch (e) {
+      if (signal?.aborted) return;
       toast.error(errorText(e));
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   };
 

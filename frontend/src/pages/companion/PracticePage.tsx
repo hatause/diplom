@@ -78,7 +78,7 @@ export function PracticePage({ kind }: { kind: "decks" | "quizzes" }) {
     finally { setBusy(false); }
   }
   async function generate() {
-    if (busy) return;
+    if (busy || loading) return;
     setBusy(true);
     setError("");
     try {
@@ -416,7 +416,7 @@ export function PracticePage({ kind }: { kind: "decks" | "quizzes" }) {
             </label>
             <button
               className="button primary"
-              disabled={busy || !source.trim()}
+              disabled={busy || loading || !source.trim()}
             >
               {flash ? <Layers size={18} /> : <Brain size={18} />}Создать{" "}
               {flash ? "карточки" : "викторину"}

@@ -13,8 +13,11 @@ export function ProfilePage() {
   const [form, setForm] = useState({ firstName: user?.firstName || '', lastName: user?.lastName || '' });
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '' });
   const [saving, setSaving] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
 
   const handleSave = async () => {
+    if (saving) return;
+    if (!form.firstName.trim() || !form.lastName.trim()) { toast.error('Укажите имя и фамилию'); return; }
     setSaving(true);
     try {
       const res = await api.put('/auth/profile', form);
@@ -27,12 +30,15 @@ export function ProfilePage() {
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (changingPassword) return;
     if (pwForm.newPassword.length < 8) { toast.error('Минимум 8 символов'); return; }
+    setChangingPassword(true);
     try {
       await api.put('/auth/password', pwForm);
       setPwForm({ currentPassword: '', newPassword: '' });
       toast.success('Пароль изменён');
     } catch (err: any) { toast.error(errorText(err)); }
+    finally { setChangingPassword(false); }
   };
 
   const inputStyle = { background: 'var(--bg-input)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' };
@@ -63,20 +69,20 @@ export function ProfilePage() {
         {editing ? (
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              <input type="text" value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))}
+              <input type="text" disabled={saving} maxLength={100} value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))}
                 className="w-full min-w-0 px-4 py-3 rounded-xl text-sm outline-none" style={inputStyle} placeholder="Имя" />
-              <input type="text" value={form.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))}
+              <input type="text" disabled={saving} maxLength={100} value={form.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))}
                 className="w-full min-w-0 px-4 py-3 rounded-xl text-sm outline-none" style={inputStyle} placeholder="Фамилия" />
             </div>
             <div className="flex gap-2">
               <button onClick={handleSave} disabled={saving} className="px-4 py-2 rounded-xl text-sm font-medium text-white flex items-center gap-2" style={{ background: 'var(--accent-gradient)' }}>
                 <Save size={16} /> Сохранить
               </button>
-              <button onClick={() => setEditing(false)} className="px-4 py-2 rounded-xl text-sm" style={{ background: 'var(--bg-input)', color: 'var(--text-secondary)' }}>Отмена</button>
+              <button disabled={saving} onClick={() => setEditing(false)} className="px-4 py-2 rounded-xl text-sm" style={{ background: 'var(--bg-input)', color: 'var(--text-secondary)' }}>Отмена</button>
             </div>
           </div>
         ) : (
-          <button onClick={() => setEditing(true)} className="px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2" style={{ background: 'var(--bg-input)', color: 'var(--text-secondary)' }}>
+          <button onClick={() => { setForm({ firstName: user?.firstName || '', lastName: user?.lastName || '' }); setEditing(true); }} className="px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2" style={{ background: 'var(--bg-input)', color: 'var(--text-secondary)' }}>
             <Edit2 size={16} /> Редактировать
           </button>
         )}
@@ -105,11 +111,11 @@ export function ProfilePage() {
           <Key size={16} style={{ color: 'var(--accent-1)' }} /> Сменить пароль
         </h3>
         <form onSubmit={handleChangePassword} className="space-y-3">
-          <input type="password" value={pwForm.currentPassword} onChange={e => setPwForm(f => ({ ...f, currentPassword: e.target.value }))}
+          <input type="password" required disabled={changingPassword} autoComplete="current-password" aria-label="Текущий пароль" value={pwForm.currentPassword} onChange={e => setPwForm(f => ({ ...f, currentPassword: e.target.value }))}
             placeholder="Текущий пароль" className="w-full px-4 py-3 rounded-xl text-sm outline-none" style={inputStyle} />
-          <input type="password" value={pwForm.newPassword} onChange={e => setPwForm(f => ({ ...f, newPassword: e.target.value }))}
+          <input type="password" required minLength={8} disabled={changingPassword} autoComplete="new-password" aria-label="Новый пароль" value={pwForm.newPassword} onChange={e => setPwForm(f => ({ ...f, newPassword: e.target.value }))}
             placeholder="Новый пароль (минимум 8 символов)" className="w-full px-4 py-3 rounded-xl text-sm outline-none" style={inputStyle} />
-          <button type="submit" className="px-4 py-2 rounded-xl text-sm font-medium text-white" style={{ background: 'var(--accent-gradient)' }}>Сменить</button>
+          <button type="submit" disabled={changingPassword} className="px-4 py-2 rounded-xl text-sm font-medium text-white" style={{ background: 'var(--accent-gradient)' }}>Сменить</button>
         </form>
       </motion.div>
     </div>

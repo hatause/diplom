@@ -154,7 +154,17 @@ class SiteWorkflowTests(unittest.IsolatedAsyncioTestCase):
                 for _ in range(5):
                     session=await self.call('POST',f'/{kind}/sessions/{sid}/{step}',user=student['id'],json=body)
                 if kind=='feynman':self.assertGreater(session['difficulty'],1)
-            with patch.object(gemini_service,'generate_json',new=AsyncMock(return_value={'summary':'Good work'})):
+            # Exercise the actual JSON/schema validator with a valid provider fixture.
+            assessment = {'summary': 'Good work', 'encouragement': 'Keep studying', 'overallScore': 80,
+                          **({'understoodWell': ['Addition'], 'knowledgeGaps': [], 'mistakesFound': [], 'topicsToReview': [],
+                              'scores': {'conceptUnderstanding': 80, 'causalReasoning': 80, 'simpleExplanation': 80,
+                                         'exampleQuality': 80, 'exceptionAwareness': 80, 'logicalCoherence': 80}}
+                             if kind == 'feynman' else
+                             {'strongPoints': ['Reasoning'], 'weakPoints': [], 'goodArguments': [], 'unsupportedClaims': [],
+                              'logicalFallacies': [], 'unrefutedCounterarguments': [], 'lessonsLearned': [], 'topicsToStudy': [],
+                              'scores': {'argumentQuality': 80, 'logicalReasoning': 80, 'evidenceUse': 80,
+                                         'counterargumentHandling': 80, 'topicUnderstanding': 80, 'questioningSkill': 80}})}
+            with patch.object(gemini_service,'_generate',new=AsyncMock(return_value=json.dumps(assessment))):
                 finished=await self.call('POST',f'/{kind}/sessions/{sid}/complete',user=student['id'])
                 self.assertEqual(finished['status'],'completed')
             await self.call('GET',f'/{kind}/sessions/{sid}',user=self.admin.id,expected=404)
